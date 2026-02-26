@@ -34,8 +34,10 @@ export AR="${OHOS_NDK}/llvm/bin/llvm-ar"
 export NM="${OHOS_NDK}/llvm/bin/llvm-nm"
 export RANLIB="${OHOS_NDK}/llvm/bin/llvm-ranlib"
 export STRIP="${OHOS_NDK}/llvm/bin/llvm-strip"
+export STRINGS="${OHOS_NDK}/llvm/bin/llvm-strings"
+export OBJDUMP="${OHOS_NDK}/llvm/bin/llvm-objdump"
 
-export CFLAGS="--target=${TARGET_ARCH} --sysroot=${OHOS_SYSROOT} -fPIC -Wl,-z,max-page-size=16384"
+export CFLAGS="--target=${TARGET_ARCH} --sysroot=${OHOS_SYSROOT} -fPIC"
 export LDFLAGS="--target=${TARGET_ARCH} --sysroot=${OHOS_SYSROOT} -Wl,-z,max-page-size=16384"
 
 # Verification Logic
@@ -73,6 +75,8 @@ check_exec "${AR}" || FAILED=1
 check_exec "${NM}" || FAILED=1
 check_exec "${RANLIB}" || FAILED=1
 check_exec "${STRIP}" || FAILED=1
+check_exec "${STRINGS}" || FAILED=1
+check_exec "${OBJDUMP}" || FAILED=1
 
 if [ $FAILED -eq 1 ]; then
     echo "Environment verification FAILED."
@@ -95,20 +99,25 @@ build_contribs() {
     cd "${CONTRIB_DIR}" || exit 1
     
     # Run bootstrap
-    ../bootstrap --host=${TARGET_TUPLE} --disable-x265
+    ../bootstrap --build=x86_64-unknown-linux-gnu --host=${TARGET_TUPLE} --disable-cddb
     
     # Write OpenHarmony toolchain paths to config.mak
-    echo "EXTRA_CFLAGS=\"${CFLAGS}\"" >> config.mak
-    echo "EXTRA_CXXFLAGS=\"${CXXFLAGS}\"" >> config.mak
-    echo "EXTRA_LDFLAGS=\"${LDFLAGS}\"" >> config.mak
-    echo "CC=\"${CC}\"" >> config.mak
-    echo "CXX=\"${CXX}\"" >> config.mak
-    echo "AR=\"${AR}\"" >> config.mak
-    echo "AS=\"${CC} -c\"" >> config.mak
-    echo "RANLIB=\"${RANLIB}\"" >> config.mak
-    echo "LD=\"${LD:-${CC}}\"" >> config.mak
-    echo "NM=\"${NM}\"" >> config.mak
-    echo "STRIP=\"${STRIP}\"" >> config.mak
+    # Fix broken OpenHarmony diff tool by removing it from PATH
+    echo "PATH := \$(subst /home/francesco/command-line-tools/sdk/default/openharmony/toolchains:,,\\\$(PATH))" > config.mak
+    echo "EXTRA_CFLAGS=${CFLAGS}" >> config.mak
+    echo "EXTRA_CXXFLAGS=${CXXFLAGS}" >> config.mak
+    echo "EXTRA_LDFLAGS=${LDFLAGS}" >> config.mak
+    echo "CC=${CC}" >> config.mak
+    echo "CXX=${CXX}" >> config.mak
+    echo "AR=${AR}" >> config.mak
+    echo "AS=${CC} -c" >> config.mak
+    echo "RANLIB=${RANLIB}" >> config.mak
+    echo "LD=${LD:-${CC}}" >> config.mak
+    echo "NM=${NM}" >> config.mak
+    echo "STRIP=${STRIP}" >> config.mak
+    echo "STRINGS=${STRINGS}" >> config.mak
+    echo "OBJDUMP=${OBJDUMP}" >> config.mak
+    echo "PKGS_DISABLE += protobuf lua xcb srt" >> config.mak
     
     echo "Contrib environment prepared in ${CONTRIB_DIR}"
     echo "Check config.mak for toolchain variables."

@@ -91,7 +91,7 @@
 - [x] In `scripts/build_ohos.sh`, add a dedicated function `build_contribs()`.
 - [x] Set `TARGET_TUPLE="aarch64-linux-ohos"`.
 - [x] Create the contrib build directory: `mkdir -p libvlc/contrib/contrib-ohos-${TARGET_TUPLE}`.
-- [x] In that directory, run `../bootstrap --host=${TARGET_TUPLE} --disable-x265 ...` (disable any problematic modules for now depending on findings in 1.1).
+- [x] In that directory, run `../bootstrap --host=${TARGET_TUPLE}...` (disable any problematic modules for now depending on findings in 1.1).
 - [x] Write OpenHarmony toolchain paths to `config.mak` so VLC's contrib system can compile them natively (this mirrors the `vlc-android` port's approach):
   ```bash
   echo "EXTRA_CFLAGS=${CFLAGS}" >> config.mak
@@ -109,16 +109,27 @@
 - **Test:** `cat libvlc/contrib/contrib-ohos-aarch64-linux-ohos/config.mak` shows correct paths and flags.
 
 ### 1.3 Fetch and Build Contribs
-- [ ] Inside `libvlc/contrib/contrib-ohos-${TARGET_TUPLE}`, run `make list` to verify recognized dependencies.
-- [ ] Run `make fetch` to download all third-party tarballs.
-- [ ] Run `make -j$(nproc)` to cross-compile all dependencies sequentially. 
+- [x] Inside `libvlc/contrib/contrib-ohos-${TARGET_TUPLE}`, run `make list` to verify recognized dependencies.
+- [x] Run `make fetch` to download all third-party tarballs.
+- [x] Run `make -j$(nproc)` to cross-compile all dependencies sequentially. *(Completed)*
 > NOTE: This process will likely fail on several libraries since OpenHarmony is an unrecognized target or requires specific patches. We will need to patch individual `rules.mak` files in `libvlc/contrib/src/` for missing OS flags (e.g., adding OS-specific fixes or skipping unsupported features like Vulkan).
+> 
+> **Important Implementation Notes (Status):**
+> * **config.sub OS recognition:** `config.sub` scripts did not recognize `linux-ohos*`. This was resolved by mutating the `UPDATE_AUTOCONFIG` and `RECONF` targets in `contrib/src/main.mak` to run a `sed` command that injects the required targets (`linux-ohos*` and `ohos*`).
+> * **aribb24 config.sub parsing:** The `aribb24` module explicitly used its own `./bootstrap` script rather than `$(RECONF)`, bypassing our global `config.sub` `sed` patch. Replaced `./bootstrap` with `$(RECONF)` in `contrib/src/aribb24/rules.mak`.
+> * **Broken diff tool:** OpenHarmony's toolchains include a customized `/home/francesco/command-line-tools/sdk/default/openharmony/toolchains/diff` that overrides standard GNU `diff`. The broken `diff` incorrectly exits with status `0` upon failure, causing Autotools `config.status` to wrongly assume header files (e.g., `jconfig.h` in `jpeg`) are identical to previous runs. This skipped generation of headers and broke builds. We fixed this by modifying `config.mak` to filter the OHOS toolchains directory out of `$PATH`.
+> * **cddb missing AM_ICONV:** The `cddb` build failed on `autoreconf` with an undefined `AM_ICONV` macro error. `cddb` connects with audio CD databases and is completely irrelevant for modern OpenHarmony/mobile usage, so we completely disabled the dependency via `libvlc/contrib/src/cddb/rules.mak`.
+> * **libgpg-error thread detection:** OpenHarmony lacks `pthread_cancel`. The `libgpg-error` build failed trying to use it for weak symbol thread detection. We patched `src/posix-lock.c` to assume pthreads are available unconditionally.
+> * **libvpx configure errors:** The `libvpx` configure script failed doing compile-only feature tests because `-Wl,-z,max-page-size=16384` was passed in `CFLAGS` and triggered a warning treated as an error. Removed the linker flag from `CFLAGS` in `build_ohos.sh` and `config.mak`. Also patched `vpx/rules.mak` to not guess the cross compiler name (`VPX_CROSS`) on OpenHarmony, but strictly rely on `HOSTVARS` `CC`/`CXX`.
+> * **Missing toolchain bins:** Scripts for `speex`, `x264` and `nfs` failed because `STRINGS`, `NM`, and `OBJDUMP` were missing from the environment. Added them to the `HOSTTOOLS` exported variables in `contrib/src/main.mak`.
+> * **Disabled auxiliary packages:** `protobuf`, `lua`, `xcb` (X11 dependency), and `srt` (socket.h conflict) failed or are unnecessary, so they were added to `PKGS_DISABLE` in `config.mak`.
+> * **sidplay2 narrowing error:** `sidplay2` failed due to a C++11 narrowing error. This was fixed by appending `CXXFLAGS="-Wno-c++11-narrowing"` to its configure parameters in `rules.mak`.
 - **Test:** `make -j$(nproc)` eventually completes without errors, producing `.a` or `.so` files in `libvlc/contrib/aarch64-linux-ohos/lib/`.
 
 ### 1.4 Validate the Full Contrib Build
-- [ ] Run `ls libvlc/contrib/aarch64-linux-ohos/lib/*.a | wc -l` (VLC contribs are built statically by default).
-- [ ] Verify 16KB page alignment in `config.mak` LDFLAGS check.
-- [ ] Check that `libvlc/contrib/aarch64-linux-ohos` contains valid headers in `include/` and pkg-config files in `lib/pkgconfig/`.
+- [x] Run `ls libvlc/contrib/aarch64-linux-ohos/lib/*.a | wc -l` (VLC contribs are built statically by default).
+- [x] Verify 16KB page alignment in `config.mak` LDFLAGS check.
+- [x] Check that `libvlc/contrib/aarch64-linux-ohos` contains valid headers in `include/` and pkg-config files in `lib/pkgconfig/`.
 - **Test:** `pkg-config --static --libs libavcodec` returns valid linker flags using the local contrib path.
 
 ---
