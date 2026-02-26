@@ -32,7 +32,7 @@
 - **Test:** The empty app installs and displays on-screen.
 
 ### 0.3 Initialize the `vlc_ohos` Repository Structure
-- [ ] Create the following directory layout inside the project:
+- [/] Create the following directory layout inside the project:
   ```
   vlc_ohos/
   ├── entry/                         # Main HAP module
@@ -53,12 +53,12 @@
   ├── scripts/                       # Build/toolchain orchestration scripts
   └── docs/
   ```
-- [ ] Add VLC source as a git submodule: `git submodule add https://code.videolan.org/videolan/vlc.git libvlc`.
-- [ ] Check out the `4.0` branch (or latest stable).
+- [X] Add VLC source as a git submodule: `git submodule add https://code.videolan.org/videolan/vlc.git libvlc`.
+- [X] Check out latest stable branch: tag `3.0.23-2`.
 - **Test:** `ls libvlc/include/vlc/libvlc.h` succeeds.
 
 ### 0.4 Create the Master Build Script Skeleton
-- [ ] Create `scripts/build_ohos.sh` with the following exported environment variables:
+- [X] Create `scripts/build_ohos.sh` with the following exported environment variables:
   ```bash
   export OHOS_SDK_ROOT="/path/to/OpenHarmony/Sdk"
   export OHOS_NDK="${OHOS_SDK_ROOT}/native"
@@ -74,7 +74,7 @@
   export CFLAGS="--sysroot=${OHOS_SYSROOT} -fPIC -Wl,-z,max-page-size=16384"
   export LDFLAGS="--sysroot=${OHOS_SYSROOT} -Wl,-z,max-page-size=16384"
   ```
-- [ ] Add a `--help` usage message and argument parsing.
+- [X] Add a `--help` usage message and argument parsing.
 - **Test:** `bash scripts/build_ohos.sh --help` prints usage without errors.
 
 ---
@@ -82,10 +82,10 @@
 ## Phase 1 — Cross-Compile Third-Party Dependencies (Contrib System)
 
 ### 1.1 Audit VLC Contrib Dependencies
-- [ ] Run `ls libvlc/contrib/src/` to enumerate all third-party libraries.
-- [ ] Create a spreadsheet/checklist of every contrib library with columns: `Name`, `Build System (autotools/cmake/meson)`, `Priority (critical/optional)`, `OHOS Status (not-started/building/passing)`.
-- [ ] Identify the **critical-path** libraries: `FFmpeg`, `libplacebo`, `libass`, `freetype`, `harfbuzz`, `fribidi`, `libbluray`, `libmad`, `flac`, `ogg`, `vorbis`, `opus`, `dav1d`, `x264`, `x265`, `gnutls` (or `mbedtls`).
-- **Deliverable:** A markdown table of dependencies with priorities.
+- [x] Run `ls libvlc/contrib/src/` to enumerate all third-party libraries.
+- [x] Create a spreadsheet/checklist of every contrib library with columns: `Name`, `Build System (autotools/cmake/meson)`, `Priority (critical/optional)`, `OHOS Status (not-started/building/passing)`.
+- [x] Identify the **critical-path** libraries: `FFmpeg`, `libplacebo`, `libass`, `freetype`, `harfbuzz`, `fribidi`, `libbluray`, `libmad`, `flac`, `ogg`, `vorbis`, `opus`, `dav1d`, `x264`, `x265`, `gnutls` (or `mbedtls`).
+- **Deliverable:** A markdown table of dependencies with priorities (see `vlc_contrib_audit.md`).
 
 ### 1.2 Write the Contrib Toolchain Wrapper
 - [ ] Create `vlccontrib/ohos-toolchain-env.sh` that sources `scripts/build_ohos.sh` variables and exports the following for Autotools consumption:

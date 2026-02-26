@@ -1,0 +1,3 @@
+[submodule "libvlc"]
+	path = libvlc
+	url = https://code.videolan.org/videolan/vlc.git
