@@ -87,79 +87,39 @@
 - [x] Identify the **critical-path** libraries: `FFmpeg`, `libplacebo`, `libass`, `freetype`, `harfbuzz`, `fribidi`, `libbluray`, `libmad`, `flac`, `ogg`, `vorbis`, `opus`, `dav1d`, `x264`, `x265`, `gnutls` (or `mbedtls`).
 - **Deliverable:** A markdown table of dependencies with priorities (see `vlc_contrib_audit.md`).
 
-### 1.2 Write the Contrib Toolchain Wrapper
-- [ ] Create `vlccontrib/ohos-toolchain-env.sh` that sources `scripts/build_ohos.sh` variables and exports the following for Autotools consumption:
+### 1.2 Prepare Contrib Build Environment
+- [ ] In `scripts/build_ohos.sh`, add a dedicated function `build_contribs()`.
+- [ ] Set `TARGET_TUPLE="aarch64-linux-ohos"`.
+- [ ] Create the contrib build directory: `mkdir -p libvlc/contrib/contrib-ohos-${TARGET_TUPLE}`.
+- [ ] In that directory, run `../bootstrap --host=${TARGET_TUPLE} --disable-x265 ...` (disable any problematic modules for now depending on findings in 1.1).
+- [ ] Write OpenHarmony toolchain paths to `config.mak` so VLC's contrib system can compile them natively (this mirrors the `vlc-android` port's approach):
   ```bash
-  export HOST="aarch64-linux-ohos"
-  export PKG_CONFIG_PATH="${CONTRIB_PREFIX}/lib/pkgconfig"
-  export PKG_CONFIG_LIBDIR="${OHOS_SYSROOT}/usr/lib/pkgconfig"
+  echo "EXTRA_CFLAGS=${CFLAGS}" >> config.mak
+  echo "EXTRA_CXXFLAGS=${CXXFLAGS}" >> config.mak
+  echo "EXTRA_LDFLAGS=${LDFLAGS}" >> config.mak
+  echo "CC=${CC}" >> config.mak
+  echo "CXX=${CXX}" >> config.mak
+  echo "AR=${AR}" >> config.mak
+  echo "AS=${CC} -c" >> config.mak
+  echo "RANLIB=${RANLIB}" >> config.mak
+  echo "LD=${LD}" >> config.mak
+  echo "NM=${NM}" >> config.mak
+  echo "STRIP=${STRIP}" >> config.mak
   ```
-- [ ] Create a helper function `ohos_configure()` that wraps `./configure` calls with `--host=${HOST} --prefix=${CONTRIB_PREFIX} --with-sysroot=${OHOS_SYSROOT}`.
-- **Test:** Source the file; `echo $CC` prints the OHOS clang path.
+- **Test:** `cat libvlc/contrib/contrib-ohos-aarch64-linux-ohos/config.mak` shows correct paths and flags.
 
-### 1.3 Cross-Compile FFmpeg for OpenHarmony
-- [ ] Clone FFmpeg: `git clone https://git.ffmpeg.org/ffmpeg.git vlccontrib/ffmpeg`.
-- [ ] Check out a known stable release tag (e.g., `n7.1`).
-- [ ] Create `vlccontrib/build_ffmpeg_ohos.sh` with the following configure invocation:
-  ```bash
-  ./configure \
-    --prefix=${CONTRIB_PREFIX} \
-    --enable-cross-compile \
-    --cross-prefix=${OHOS_NDK}/llvm/bin/ \
-    --target-os=linux \
-    --arch=aarch64 \
-    --cc="${CC}" \
-    --cxx="${CXX}" \
-    --sysroot="${OHOS_SYSROOT}" \
-    --extra-cflags="-fPIC -Wl,-z,max-page-size=16384" \
-    --extra-ldflags="-Wl,-z,max-page-size=16384" \
-    --enable-shared \
-    --disable-static \
-    --disable-programs \
-    --disable-doc \
-    --enable-pic \
-    --enable-gpl \
-    --enable-nonfree \
-    --disable-vulkan \
-    --disable-sdl2
-  ```
-- [ ] Run `make -j$(nproc)` and `make install`.
-- [ ] Verify output: `file ${CONTRIB_PREFIX}/lib/libavcodec.so` reports `ELF 64-bit LSB shared object, ARM aarch64`.
-- [ ] Verify 16KB page alignment: `readelf -l ${CONTRIB_PREFIX}/lib/libavcodec.so | grep LOAD` — segment alignment must be `0x4000` (16384).
-- **Test:** `pkg-config --libs libavcodec` returns valid linker flags.
+### 1.3 Fetch and Build Contribs
+- [ ] Inside `libvlc/contrib/contrib-ohos-${TARGET_TUPLE}`, run `make list` to verify recognized dependencies.
+- [ ] Run `make fetch` to download all third-party tarballs.
+- [ ] Run `make -j$(nproc)` to cross-compile all dependencies sequentially. 
+> NOTE: This process will likely fail on several libraries since OpenHarmony is an unrecognized target or requires specific patches. We will need to patch individual `rules.mak` files in `libvlc/contrib/src/` for missing OS flags (e.g., adding OS-specific fixes or skipping unsupported features like Vulkan).
+- **Test:** `make -j$(nproc)` eventually completes without errors, producing `.a` or `.so` files in `libvlc/contrib/aarch64-linux-ohos/lib/`.
 
-### 1.4 Cross-Compile Minimal Audio Codec Libraries
-- [ ] Build `libogg` (Autotools: `ohos_configure && make -j$(nproc) && make install`).
-- [ ] Build `libvorbis` (depends on libogg).
-- [ ] Build `libopus`.
-- [ ] Build `libflac` (depends on libogg).
-- [ ] Build `libmad` (MP3 decoding).
-- **Test:** For each: `file ${CONTRIB_PREFIX}/lib/lib<name>.so` confirms ARM aarch64 ELF.
-
-### 1.5 Cross-Compile Text Rendering Stack
-- [ ] Build `freetype` (CMake-based — use `-DCMAKE_TOOLCHAIN_FILE=${OHOS_TOOLCHAIN}`).
-- [ ] Build `fribidi` (Autotools or Meson).
-- [ ] Build `harfbuzz` (CMake — link against freetype).
-- [ ] Build `libass` (Autotools — depends on freetype, fribidi, harfbuzz).
-- **Test:** `pkg-config --libs libass` returns valid flags.
-
-### 1.6 Cross-Compile TLS Library
-- [ ] Choose `gnutls` or `mbedtls` (mbedtls is often simpler for cross-compilation).
-- [ ] Build using CMake with `${OHOS_TOOLCHAIN}`.
-- **Test:** A simple C program linking against the TLS library cross-compiles successfully.
-
-### 1.7 Cross-Compile Remaining Contrib Libraries
-- [ ] Build `dav1d` (AV1 software decoder, Meson-based — needs a Meson cross file for OHOS).
-- [ ] Build `libplacebo` (GPU shader library, Meson).
-- [ ] Build `libbluray` (optional, for Blu-ray disc support).
-- [ ] Build any remaining libraries identified in Step 1.1 as critical.
-- **Test:** All libraries produce ARM aarch64 shared objects with 16KB page alignment.
-
-### 1.8 Validate the Full Contrib Prefix
-- [ ] Run `ls ${CONTRIB_PREFIX}/lib/*.so | wc -l` — count matches expected number.
-- [ ] Run `ls ${CONTRIB_PREFIX}/lib/pkgconfig/*.pc | wc -l` — all pkg-config files present.
-- [ ] Create a dummy C program that `#include`s headers from each critical library and link it.
-- **Test:** Dummy program cross-compiles and links without errors.
+### 1.4 Validate the Full Contrib Build
+- [ ] Run `ls libvlc/contrib/aarch64-linux-ohos/lib/*.a | wc -l` (VLC contribs are built statically by default).
+- [ ] Verify 16KB page alignment in `config.mak` LDFLAGS check.
+- [ ] Check that `libvlc/contrib/aarch64-linux-ohos` contains valid headers in `include/` and pkg-config files in `lib/pkgconfig/`.
+- **Test:** `pkg-config --static --libs libavcodec` returns valid linker flags using the local contrib path.
 
 ---
 
@@ -173,7 +133,7 @@
   ./configure \
     --host=aarch64-linux-ohos \
     --prefix=${VLC_PREFIX} \
-    --with-contrib=${CONTRIB_PREFIX} \
+    --with-contrib=$(pwd)/contrib/aarch64-linux-ohos \
     --disable-a52 \
     --disable-xcb \
     --disable-qt \
