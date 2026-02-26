@@ -88,11 +88,11 @@
 - **Deliverable:** A markdown table of dependencies with priorities (see `vlc_contrib_audit.md`).
 
 ### 1.2 Prepare Contrib Build Environment
-- [ ] In `scripts/build_ohos.sh`, add a dedicated function `build_contribs()`.
-- [ ] Set `TARGET_TUPLE="aarch64-linux-ohos"`.
-- [ ] Create the contrib build directory: `mkdir -p libvlc/contrib/contrib-ohos-${TARGET_TUPLE}`.
-- [ ] In that directory, run `../bootstrap --host=${TARGET_TUPLE} --disable-x265 ...` (disable any problematic modules for now depending on findings in 1.1).
-- [ ] Write OpenHarmony toolchain paths to `config.mak` so VLC's contrib system can compile them natively (this mirrors the `vlc-android` port's approach):
+- [x] In `scripts/build_ohos.sh`, add a dedicated function `build_contribs()`.
+- [x] Set `TARGET_TUPLE="aarch64-linux-ohos"`.
+- [x] Create the contrib build directory: `mkdir -p libvlc/contrib/contrib-ohos-${TARGET_TUPLE}`.
+- [x] In that directory, run `../bootstrap --host=${TARGET_TUPLE} --disable-x265 ...` (disable any problematic modules for now depending on findings in 1.1).
+- [x] Write OpenHarmony toolchain paths to `config.mak` so VLC's contrib system can compile them natively (this mirrors the `vlc-android` port's approach):
   ```bash
   echo "EXTRA_CFLAGS=${CFLAGS}" >> config.mak
   echo "EXTRA_CXXFLAGS=${CXXFLAGS}" >> config.mak

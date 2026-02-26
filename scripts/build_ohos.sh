@@ -8,13 +8,17 @@ usage() {
     echo "It also verifies that the required SDK and NDK components are present."
     echo ""
     echo "Options:"
-    echo "  --help    Show this help message"
+    echo "  --help       Show this help message"
+    echo "  --contribs   Build third-party dependencies (contribs)"
     exit 0
 }
 
 # Parse arguments
+BUILD_CONTRIBS=0
 if [[ "$1" == "--help" ]]; then
     usage
+elif [[ "$1" == "--contribs" ]]; then
+    BUILD_CONTRIBS=1
 fi
 
 # Environment Variables
@@ -79,3 +83,38 @@ echo "Environment verification successful."
 echo "Target: ${TARGET_ARCH}"
 echo "CC: ${CC}"
 $CC --version | head -n 1
+
+build_contribs() {
+    echo "============================================="
+    echo "Preparing Contrib Build Environment..."
+    echo "============================================="
+    export TARGET_TUPLE="aarch64-linux-ohos"
+    CONTRIB_DIR="$(pwd)/libvlc/contrib/contrib-ohos-${TARGET_TUPLE}"
+    
+    mkdir -p "${CONTRIB_DIR}"
+    cd "${CONTRIB_DIR}" || exit 1
+    
+    # Run bootstrap
+    ../bootstrap --host=${TARGET_TUPLE} --disable-x265
+    
+    # Write OpenHarmony toolchain paths to config.mak
+    echo "EXTRA_CFLAGS=\"${CFLAGS}\"" >> config.mak
+    echo "EXTRA_CXXFLAGS=\"${CXXFLAGS}\"" >> config.mak
+    echo "EXTRA_LDFLAGS=\"${LDFLAGS}\"" >> config.mak
+    echo "CC=\"${CC}\"" >> config.mak
+    echo "CXX=\"${CXX}\"" >> config.mak
+    echo "AR=\"${AR}\"" >> config.mak
+    echo "AS=\"${CC} -c\"" >> config.mak
+    echo "RANLIB=\"${RANLIB}\"" >> config.mak
+    echo "LD=\"${LD:-${CC}}\"" >> config.mak
+    echo "NM=\"${NM}\"" >> config.mak
+    echo "STRIP=\"${STRIP}\"" >> config.mak
+    
+    echo "Contrib environment prepared in ${CONTRIB_DIR}"
+    echo "Check config.mak for toolchain variables."
+    cd - > /dev/null
+}
+
+if [ $BUILD_CONTRIBS -eq 1 ]; then
+    build_contribs
+fi
