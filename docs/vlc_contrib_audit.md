@@ -36,13 +36,13 @@
 | freetype2 | cmake | critical | passing |
 | fribidi | meson | critical | passing |
 | gcrypt | autotools | optional | passing |
-| gettext | configure | optional | not-started |
+| gettext | configure | optional | passing |
 | glew | cmake | optional | not-started |
 | glib | autotools | optional | not-started |
 | gme | cmake | optional | passing |
 | gmp | autotools | optional | passing |
 | gnutls | autotools | critical | passing |
-| goom | autotools | optional | not-started |
+| goom | autotools | optional | passing |
 | gpg-error | autotools | optional | passing |
 | growl | custom | optional | not-started |
 | gsm | custom (make) | optional | passing |
@@ -52,14 +52,14 @@
 | jpeg | autotools | optional | passing |
 | kate | autotools | optional | passing |
 | lame | autotools | optional | passing |
-| libarchive | cmake | optional | not-started |
+| libarchive | cmake | optional | passing |
 | libdsm | meson | optional | not-started |
-| libmpeg2 | autotools | optional | not-started |
-| libplacebo | meson | critical | not-started |
+| libmpeg2 | autotools | optional | passing |
+| libplacebo | meson | critical | passing |
 | libtasn1 | autotools | optional | not-started |
-| libxml2 | autotools | optional | not-started |
+| libxml2 | autotools | optional | passing |
 | live555 | custom (make) | optional | passing |
-| lua | custom (make) | optional | passing |
+| lua | custom (make) | optional | disabled |
 | mad | autotools | critical | passing |
 | matroska | cmake | optional | passing |
 | mfx | autotools | optional | not-started |
@@ -85,18 +85,18 @@
 | samplerate | autotools | optional | passing |
 | schroedinger | autotools | optional | passing |
 | sdl | autotools | optional | passing |
-| SDL_image | autotools | optional | not-started |
-| shout | autotools | optional | not-started |
-| sidplay2 | autotools | optional | not-started |
+| SDL_image | autotools | optional | passing |
+| shout | autotools | optional | passing |
+| sidplay2 | autotools | optional | passing |
 | smb2 | autotools | optional | not-started |
 | soxr | cmake | optional | not-started |
 | sparkle | custom | optional | not-started |
 | spatialaudio | cmake | optional | passing |
-| speex | autotools | optional | disabled |
+| speex | autotools | optional | passing |
 | speexdsp | autotools | optional | passing |
-| srt | cmake | optional | not-started |
+| srt | cmake | optional | disabled |
 | ssh2 | autotools | optional | passing |
-| taglib | cmake | optional | not-started |
+| taglib | cmake | optional | passing |
 | theora | autotools | optional | passing |
 | tiff | autotools | optional | passing |
 | tiger | autotools | optional | not-started |
@@ -110,11 +110,11 @@
 | wixlzx | custom | optional | not-started |
 | x262 | autotools | optional | not-started |
 | x264 | autotools | critical | passing |
-| x265 | cmake | critical | not-started |
+| x265 | cmake | critical | passing |
 | xau | autotools | optional | not-started |
-| xcb | autotools | optional | not-started |
+| xcb | autotools | optional | disabled |
 | xcb-proto | autotools | optional | not-started |
 | xorg-macros | autotools | optional | not-started |
 | xproto | autotools | optional | not-started |
-| zlib | cmake | optional | not-started |
+| zlib | cmake | optional | passing |
 | zvbi | autotools | optional | passing |
