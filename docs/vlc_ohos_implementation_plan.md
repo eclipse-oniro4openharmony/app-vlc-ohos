@@ -225,7 +225,7 @@
 ## Phase 3 — NAPI Binding Layer (JNI → Node-API)
 
 ### 3.1 Design the NAPI Interface Surface
-- [ ] Create `napi/vlc_napi.h` — declare the C++ functions to be exported:
+- [x] Create `napi/vlc_napi.h` — declare the C++ functions to be exported:
   ```cpp
   // Core lifecycle
   napi_value VlcNew(napi_env env, napi_callback_info info);
@@ -256,6 +256,8 @@
   napi_value MediaPlayerDetachEvent(napi_env env, napi_callback_info info);
   ```
 - **Deliverable:** Header file with all function signatures.
+> **Important Implementation Notes (Status):**
+> * **Header Creation:** `napi/vlc_napi.h` has been successfully created with standard `extern "C"` C++ guards to ensure proper function export.
 
 ### 3.2 Implement `libvlc_instance_t` Object Wrapping
 - [ ] Create `napi/vlc_instance_wrap.cpp`.
