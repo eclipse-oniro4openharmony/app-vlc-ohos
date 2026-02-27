@@ -483,56 +483,71 @@
 
 ## Phase 4 — Video Output (vout) Module: XComponent + OHNativeWindow
 
+> **Note:** Based on OpenHarmony's native surface guidelines, using `NativeXComponent` via `libraryname` can cause stability issues and abstracts away the `SurfaceId`. The recommended approach for video playback is "Managing the surface lifecycle with XComponentController", which obtains the `SurfaceId` on the ArkTS side and passes it natively so we can explicitly construct `OHNativeWindow` instances per media player.
+
 ### 4.1 Create the XComponent ArkTS Declaration
 - [ ] Create `entry/src/main/ets/pages/PlayerPage.ets`.
-- [ ] Declare the XComponent with `type: 'surface'` (or `'texture'` for overlay controls):
+- [ ] Declare a custom `XComponentController` to handle the `SurfaceId` callbacks.
+- [ ] Create the `XComponent` without `libraryname`, instead relying purely on the controller to manage the surface connection:
   ```typescript
+  import vlcnative from 'libvlcnative.so';
+
+  class VlcXComponentController extends XComponentController {
+    private player: vlcnative.VlcMediaPlayer;
+    
+    constructor(player: vlcnative.VlcMediaPlayer) {
+      super();
+      this.player = player;
+    }
+
+    onSurfaceCreated(surfaceId: string): void {
+      vlcnative.mediaPlayerSetNativeWindow(this.player, surfaceId);
+    }
+
+    onSurfaceChanged(surfaceId: string, rect: SurfaceRect): void {
+      // Optional: Inform VLC of display size changes through a native API
+    }
+
+    onSurfaceDestroyed(surfaceId: string): void {
+      vlcnative.mediaPlayerSetNativeWindow(this.player, "");
+    }
+  }
+
   @Entry
   @Component
   struct PlayerPage {
     private xComponentId: string = 'vlcXComponent';
-    private xComponentController: XComponentController = new XComponentController();
+    // Assume `this.player` is initialized previously via vlcnative.mediaPlayerNew(..)
+    private xComponentController: VlcXComponentController = new VlcXComponentController(this.player);
 
     build() {
       Column() {
         XComponent({
           id: this.xComponentId,
           type: XComponentType.SURFACE,
-          libraryname: 'vlcnative'
+          controller: this.xComponentController
         })
-        .onLoad(() => { /* native surface ready */ })
-        .onDestroy(() => { /* cleanup */ })
         .width('100%')
         .aspectRatio(16/9)
       }
     }
   }
   ```
-- **Test:** Page renders with XComponent placeholder visible.
+- **Test:** Page renders with XComponent placeholder visible. OpenHarmony successfully generates dynamic `surfaceId` strings.
 
-### 4.2 Implement XComponent Native Lifecycle Callbacks
-- [ ] Create `modules/video_output/ohos_vout.c` (or `.cpp`).
-- [ ] Implement the registration function:
-  ```cpp
-  void OnSurfaceCreatedCB(OH_NativeXComponent* component, void* window) {
-      OHNativeWindow* nativeWindow = static_cast<OHNativeWindow*>(window);
-      // Store nativeWindow in a global or per-instance structure
-      VlcOhosContext::getInstance()->setNativeWindow(nativeWindow);
-  }
-
-  void OnSurfaceChangedCB(OH_NativeXComponent* component, void* window) {
-      // Handle resize: update width/height
-  }
-
-  void OnSurfaceDestroyedCB(OH_NativeXComponent* component, void* window) {
-      VlcOhosContext::getInstance()->setNativeWindow(nullptr);
-  }
-  ```
-- [ ] Register callbacks using `OH_NativeXComponent_RegisterCallback`.
-- **Test:** Surface creation/destruction callbacks fire correctly (verify via log output).
+### 4.2 Implement NativeWindow Binding in NAPI (`MediaPlayerSetNativeWindow`)
+- [ ] Instead of a global hook in the `vout` module, we will implement the existing stub for `MediaPlayerSetNativeWindow` inside `napi/vlc_mediaplayer_wrap.cpp`:
+  - Unwrap the `libvlc_media_player_t` object.
+  - Extract the `surfaceId` string from ArkTS arguments.
+  - If the string is empty, we must release any stored `OHNativeWindow`.
+  - If valid, parse the string to `uint64_t` (e.g., using `std::stoull` on the utf8 string).
+  - Use `OH_NativeWindow_CreateNativeWindowFromSurfaceId(surfaceIdInt, &nativeWindow)` to obtain the `OHNativeWindow*`.
+- [ ] Bind the `OHNativeWindow*` to the `libvlc_media_player_t` instance.
+  > **Note:** LibVLC usually expects custom HWND or similar types via APIs like `libvlc_media_player_set_nsobject()`. To support OpenHarmony properly, we should use a global thread-safe registry mapping `libvlc_media_player_t*` pointers to `OHNativeWindow*`, or inject the `OHNativeWindow*` into a VLC core variable using `var_CreateGetAddress(player, "ohos-window")` if safe.
+- **Test:** Passing the `surfaceId` from ArkTS correctly instantiates an `OHNativeWindow*` and is accessible asynchronously without crashing.
 
 ### 4.3 Implement the VLC `vout` Display Module (Software Path)
-- [ ] Create the VLC-style module boilerplate in `modules/video_output/ohos_vout.c`:
+- [ ] Create the VLC-style module boilerplate in `modules/video_output/ohos_vout.c` (or `.cpp`):
   ```c
   static int Open(vlc_object_t *obj);
   static void Close(vlc_object_t *obj);
@@ -548,7 +563,7 @@
   ```
 - [ ] In `Open()`:
   - Allocate `vout_display_sys_t` struct.
-  - Retrieve the `OHNativeWindow*` from `VlcOhosContext`.
+  - Retrieve the `OHNativeWindow*` associated with this instance (e.g., extracting it from the player tracking map).
   - Set `vd->fmt` to negotiate the display format (e.g., `VLC_CODEC_RGB32` or `VLC_CODEC_NV12`).
 - [ ] In `Display()` callback:
   - Request an `OHNativeWindowBuffer` via `OH_NativeWindow_NativeWindowRequestBuffer`.
@@ -556,24 +571,24 @@
   - Copy the decoded frame's pixel data (from `picture_t`) into the mapped memory.
   - Unmap and flush: `OH_NativeWindow_NativeWindowFlushBuffer(window, buffer, fenceFd)`.
   - Use `poll()` on `fenceFd` to wait for the compositor to consume the buffer.
-- **Test:** Play a software-decoded video — frames appear on the XComponent surface (even if slow).
+- **Test:** Play a software-decoded video — frames appear on the XComponent surface.
 
 ### 4.4 Implement EGL Hardware Rendering Path
-- [ ] In `Open()`, after acquiring `OHNativeWindow*`:
+- [ ] In `Open()`, following acquisition of `OHNativeWindow*`:
   - Initialize EGL: `eglGetDisplay(EGL_DEFAULT_DISPLAY)`, `eglInitialize()`.
   - Choose an EGL config supporting `EGL_OPENGL_ES2_BIT`.
   - Create EGL context: `eglCreateContext()`.
   - Create EGL surface: `eglCreateWindowSurface(display, config, nativeWindow, NULL)`.
   - Make current: `eglMakeCurrent()`.
-- [ ] Use VLC's existing OpenGL/GLES rendering shaders (from `modules/video_output/opengl/`) to render `picture_t` textures.
+- [ ] Use VLC's existing OpenGL/GLES rendering shaders (from `modules/video_output/opengl/`) to render `picture_t` textures to the EGL surface.
 - [ ] In `Display()`:
   - Upload the decoded frame to a GL texture.
-  - Render the quad.
+  - Render the quad via the OpenGL pipeline.
   - `eglSwapBuffers()`.
-- **Test:** Play an H.264 video — smooth rendering with proper colors via GL shaders.
+- **Test:** Play an H.264 video — smooth rendering with proper colors via the hardware-accelerated GL path.
 
 ### 4.5 Implement Scaling Mode Mapping
-- [ ] Map VLC aspect ratio settings to OpenHarmony scaling modes:
+- [ ] Map VLC aspect ratio settings to OpenHarmony scaling modes through the NativeWindow metadata API:
   ```c
   switch (vlc_aspect_mode) {
       case VLC_VOUT_CROP:
@@ -587,13 +602,14 @@
           break;
   }
   ```
-- **Test:** Toggle aspect ratio in the UI — video display adjusts accordingly.
+- **Test:** Toggle aspect ratio in the UI — video display coordinates natively adjust accordingly.
 
-### 4.6 Handle Surface Lifecycle Events
-- [ ] In `OnSurfaceDestroyedCB`: set a flag to pause the VLC video output pipeline.
-- [ ] In `OnSurfaceCreatedCB` (when returning from background): re-acquire the window and re-initialize GL context.
-- [ ] Handle `OnSurfaceChangedCB`: update `vd->cfg->display.width / height` and force VLC to re-negotiate the output format.
-- **Test:** Rotate device / minimize and restore app — video output resumes without crash.
+### 4.6 Handle Surface Lifecycle Events & Restarts
+- [ ] The `onSurfaceDestroyed` call from ArkTS sets the surface mapping to `nullptr`. `ohos_vout.c` should routinely check window validity or be signaled to pause processing if the native window goes away.
+- [ ] The `onSurfaceCreated` call when restoring the app provides a new `surfaceId`. 
+  - `MediaPlayerSetNativeWindow` should handle dynamically replacing the native window without stopping playback.
+  - `ohos_vout.c` must listen for the window replacement to generate a new EGL surface.
+- **Test:** Rotate device / minimize and restore app / switch between full-screen and mini-player — video output resumes robustly with the new surface boundaries.
 
 ---
 
