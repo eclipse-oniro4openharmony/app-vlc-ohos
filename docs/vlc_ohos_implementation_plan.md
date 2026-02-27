@@ -560,7 +560,7 @@
 > * **Native Dependencies:** Updated `entry/src/main/cpp/CMakeLists.txt` linking stage to include `libnative_window.so` which provides `OH_NativeWindow_CreateNativeWindowFromSurfaceId` avoiding undefined symbols in the native linker step.
 
 ### 4.3 Implement the VLC `vout` Display Module (Software Path)
-- [ ] Create the VLC-style module boilerplate in `modules/video_output/ohos_vout.c` (or `.cpp`):
+- [x] Create the VLC-style module boilerplate in `modules/video_output/ohos_vout.c` (or `.cpp`):
   ```c
   static int Open(vlc_object_t *obj);
   static void Close(vlc_object_t *obj);
@@ -574,17 +574,26 @@
       set_callbacks(Open, Close)
   vlc_module_end()
   ```
-- [ ] In `Open()`:
+- [x] In `Open()`:
   - Allocate `vout_display_sys_t` struct.
   - Retrieve the `OHNativeWindow*` associated with this instance (e.g., extracting it from the player tracking map).
   - Set `vd->fmt` to negotiate the display format (e.g., `VLC_CODEC_RGB32` or `VLC_CODEC_NV12`).
-- [ ] In `Display()` callback:
+- [x] In `Display()` callback:
   - Request an `OHNativeWindowBuffer` via `OH_NativeWindow_NativeWindowRequestBuffer`.
   - Map the buffer: `mmap()` on the buffer FD.
   - Copy the decoded frame's pixel data (from `picture_t`) into the mapped memory.
   - Unmap and flush: `OH_NativeWindow_NativeWindowFlushBuffer(window, buffer, fenceFd)`.
   - Use `poll()` on `fenceFd` to wait for the compositor to consume the buffer.
 - **Test:** Play a software-decoded video — frames appear on the XComponent surface.
+
+> **Important Implementation Notes (Status):**
+> * **Vout Implementation:** Created the software-based vout display plugin in `modules/video_output/ohos_vout.c`. The module requests memory-mapped buffers using `OH_NativeWindow_NativeWindowRequestBuffer`, copies the frame from `picture_t` to the mapped memory, and safely uses `OH_NativeWindow_NativeWindowFlushBuffer` with `OH_NativeWindow_NativeWindowAbortBuffer` correctly handling cancellations.
+> * **Window Lifecycle:** Evaluated the correct method for linking `OHNativeWindow` into the VLC plugin system. Adopted `vout_display_NewWindow(vd, VOUT_WINDOW_TYPE_NSOBJECT)` and `var_InheritAddress` interchangeably to successfully retrieve the OpenHarmony `OHNativeWindow` object previously injected natively inside `MediaPlayerSetNativeWindow`.
+> * **Build Configuration:** Added `ohos_vout.c` as a standalone `SHARED` `ohos_vout_plugin` in `entry/src/main/cpp/CMakeLists.txt` making use of `__PLUGIN__` flags and linking it explicitly against `libnative_window.so`.
+> * **Plugin Loading Verification:** Resolved an issue where `ohos_vout_plugin` was not being recognized by VLC. After verifying path accessibility via a manual `dlopen` check in `vlc_instance_wrap.cpp`, we discovered that while the plugin was loaded, it wasn't being matched for "OHOSVout" shortcuts. 
+> * **LibVLC API Porting:** Discovered and fixed a platform restriction in `libvlc/lib/media_player.c`. Modified `libvlc_media_player_set_nsobject` to remove the `#ifdef __APPLE__` guard, allowing OpenHarmony to pass the `OHNativeWindow` pointer through the standard `drawable-nsobject` variable. This enabled the `vout` module to successfully inherit the window.
+> * **Shortcut Registration:** Updated `ohos_vout.c` to explicitly include `add_shortcut("OHOSVout")` in the module descriptor, ensuring VLC can find it using the `--vout=OHOSVout` argument. Verified loading with `--list` argument in `vlc_init.log`.
+
 
 ### 4.4 Implement EGL Hardware Rendering Path
 - [ ] In `Open()`, following acquisition of `OHNativeWindow*`:

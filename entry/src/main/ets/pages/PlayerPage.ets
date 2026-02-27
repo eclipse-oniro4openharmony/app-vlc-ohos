@@ -38,15 +38,19 @@ struct PlayerPage {
   private xComponentController: VlcXComponentController = new VlcXComponentController();
 
   aboutToAppear(): void {
-    const args: string[] = ["--verbose=2", "--plugin-path=/data/storage/el1/bundle/libs/arm64"];
+    const args: string[] = [
+      "--verbose=2",
+      "--plugin-path=/data/storage/el1/bundle/libs/arm64",
+      "--vout=OHOSVout",
+    ];
     this.vlcInstance = vlcnative.vlcNew(args);
     this.player = vlcnative.mediaPlayerNew(this.vlcInstance);
     this.xComponentController.setPlayer(this.player);
 
     // Provide a test video to play
-    this.vlcMedia = vlcnative.mediaNewLocation(
+    this.vlcMedia = vlcnative.mediaNewPath(
       this.vlcInstance,
-      "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      "/data/storage/el2/base/haps/entry/files/Big_Buck_Bunny.mp4",
     );
     vlcnative.mediaPlayerSetMedia(this.player, this.vlcMedia);
     vlcnative.mediaPlayerPlay(this.player);

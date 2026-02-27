@@ -29,3 +29,25 @@ target_link_libraries(vlcnative
     libhilog_ndk.z.so
     libnative_window.so
 )
+
+add_library(ohos_vout_plugin SHARED
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../modules/video_output/ohos_vout.c
+)
+
+target_compile_definitions(ohos_vout_plugin PRIVATE __PLUGIN__ MODULE_STRING="ohos_vout_plugin")
+
+target_include_directories(ohos_vout_plugin PRIVATE
+    ${VLC_INSTALL_DIR}/include
+    ${VLC_INSTALL_DIR}/include/vlc/plugins
+    ${CONTRIB_PREFIX}/include
+)
+
+target_link_directories(ohos_vout_plugin PRIVATE
+    ${VLC_INSTALL_DIR}/lib
+    ${CONTRIB_PREFIX}/lib
+)
+
+target_link_libraries(ohos_vout_plugin
+    vlccore
+    libnative_window.so
+)

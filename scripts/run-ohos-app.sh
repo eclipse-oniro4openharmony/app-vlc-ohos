@@ -30,6 +30,9 @@ hvigorw assembleHap --mode module -p product=default -p module=entry -p buildMod
 
 # Install and Clear Logs
 hdc install entry/build/default/outputs/default/entry-default-signed.hap
+hdc shell mkdir -p /data/app/el2/100/base/org.oniroproject.vlc/haps/entry/files/
+hdc file send "$SCRIPT_DIR/Big_Buck_Bunny.mp4" /data/app/el2/100/base/org.oniroproject.vlc/haps/entry/files/Big_Buck_Bunny.mp4
+hdc shell chmod 777 /data/app/el2/100/base/org.oniroproject.vlc/haps/entry/files/Big_Buck_Bunny.mp4
 hdc shell hilog -r
 hdc shell aa start -a EntryAbility -b "$BUNDLE_ID"
 
