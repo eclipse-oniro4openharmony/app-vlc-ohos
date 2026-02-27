@@ -4,6 +4,7 @@
 static void MediaPlayerFinalizer(napi_env env, void* finalize_data, void* finalize_hint) {
     libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(finalize_data);
     if (player != nullptr) {
+        MediaPlayerDetachAllEvents(player);
         libvlc_media_player_release(player);
     }
 }

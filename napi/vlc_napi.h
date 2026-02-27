@@ -34,6 +34,8 @@ napi_value MediaPlayerSetNativeWindow(napi_env env, napi_callback_info info);
 // Events
 napi_value MediaPlayerAttachEvent(napi_env env, napi_callback_info info);
 napi_value MediaPlayerDetachEvent(napi_env env, napi_callback_info info);
+void MediaPlayerDetachAllEvents(void* player);
+
 
 #ifdef __cplusplus
 }

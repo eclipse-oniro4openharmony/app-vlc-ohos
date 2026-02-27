@@ -316,25 +316,25 @@
 > * **Wrapper Implementation:** Added `MediaPlayerGetTime`, `MediaPlayerSetTime`, `MediaPlayerGetLength`, `MediaPlayerGetPosition` and `MediaPlayerSetPosition` to `napi/vlc_mediaplayer_wrap.cpp`. Type checking ensures proper conversion between Javascript `int64_t`/`double` values and libVLC standard `libvlc_time_t` and `float` arguments.
 
 ### 3.6 Implement Thread-Safe Event Callbacks
-- [ ] Create `napi/vlc_events.cpp`.
-- [ ] Implement `MediaPlayerAttachEvent`:
+- [x] Create `napi/vlc_events.cpp`.
+- [x] Implement `MediaPlayerAttachEvent`:
   - Parse the event type (integer/enum) and the ArkTS callback function.
   - Use `napi_create_string_utf8` to create a resource name (`"VLCEvent"`).
   - Use `napi_create_threadsafe_function(env, callback, nullptr, resourceName, 0, 1, nullptr, nullptr, nullptr, VlcEventCallFromJS, &tsfn)` to create a thread-safe function handle. (The `tsfn` will internally hold a reference to the JS callback).
   - Call `libvlc_event_attach(event_manager, event_type, NativeEventCallback, tsfn).`
-- [ ] Implement `NativeEventCallback` (C side, runs on VLC background thread):
+- [x] Implement `NativeEventCallback` (C side, runs on VLC background thread):
   - Package the event data into a struct allocated on the heap.
   - Call `napi_call_threadsafe_function(tsfn, data, napi_tsfn_nonblocking)`.
-- [ ] Implement `VlcEventCallFromJS` (C side, runs on main ArkTS thread):
+- [x] Implement `VlcEventCallFromJS` (C side, runs on main ArkTS thread):
   - **Important:** Wrap the entire function body in `napi_open_handle_scope` / `napi_close_handle_scope` to prevent memory leaks during high-frequency events (like `TimeChanged`).
   - Unpack the event data struct.
   - Create `napi_value` objects for event fields.
   - Invoke the stored ArkTS callback.
   - `delete` the unpacked event data struct.
-- [ ] Implement `MediaPlayerDetachEvent`:
+- [x] Implement `MediaPlayerDetachEvent`:
   - `libvlc_event_detach()`.
   - `napi_release_threadsafe_function(tsfn, napi_tsfn_release)`.
--  Handle the following events at minimum:
+- [x] Handle the following events at minimum:
   - `libvlc_MediaPlayerPlaying`
   - `libvlc_MediaPlayerPaused`
   - `libvlc_MediaPlayerStopped`
@@ -344,6 +344,9 @@
   - `libvlc_MediaPlayerBuffering`
   - `libvlc_MediaPlayerEncounteredError`
 - **Test:** Attach a `TimeChanged` listener in ArkTS; play audio — ArkTS callback fires with incrementing time values.
+
+> **Important Implementation Notes (Status):**
+> * **Wrapper Implementation:** Created `napi/vlc_events.cpp`. The thread-safe event loop has been effectively set up using `napi_create_threadsafe_function`. Callback attachments and detaching correctly link and unlink respectively. We added an internal routine `MediaPlayerDetachAllEvents` to the native interface so memory cleanup of background events happens synchronously with NAPI lifecycle finalization of media players.
 
 ### 3.7 Create the NAPI Module Registration
 - [ ] Create `napi/vlc_napi_module.cpp`:
