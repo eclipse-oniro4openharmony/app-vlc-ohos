@@ -13,6 +13,9 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 export VLC_PREFIX="${ROOT_DIR}/vlc_install"
 export TARGET_TUPLE="aarch64-linux-ohos"
 export CONTRIB_DIR="${ROOT_DIR}/libvlc/contrib/aarch64-linux-ohos"
+export PKG_CONFIG_LIBDIR="${CONTRIB_DIR}/lib/pkgconfig"
+export PKG_CONFIG_PATH=""
+export PKG_CONFIG="pkg-config --static"
 
 echo "============================================="
 echo "Configuring libVLC..."
@@ -44,6 +47,9 @@ echo "Running configure..."
     --disable-wayland \
     --disable-v4l2 \
     --disable-lua \
-    --disable-dbus
+    --disable-dbus \
+    --disable-shout \
+    --disable-taglib \
+    --disable-visual
 
 echo "Configure finished with code $?"

@@ -187,10 +187,16 @@
 - **Test:** Library compiles without linker errors.
 
 ### 2.5 Compile VLC Built-in Plugins (Software Modules)
-- [ ] Run `make -C libvlc/modules -j$(nproc)`.
-- [ ] This compiles all platform-agnostic modules: demuxers (MKV, MP4, AVI, TS, FLV), software decoders (via FFmpeg), packetizers, stream filters, etc.
-- [ ] Verify: `ls libvlc/modules/.libs/*.so | head -20` — multiple `.so` files present.
+- [x] Run `make -C libvlc/modules -j$(nproc)`.
+- [x] This compiles all platform-agnostic modules: demuxers (MKV, MP4, AVI, TS, FLV), software decoders (via FFmpeg), packetizers, stream filters, etc.
+- [x] Verify: `ls libvlc/modules/.libs/*.so | head -20` — multiple `.so` files present.
 - **Test:** No link errors against contrib libraries; `.so` files are ARM aarch64.
+> **Important Implementation Notes:**
+> * **Fortify Header Error:** OpenHarmony's `fortify.h` lacked the `O_TMPFILE` macro. Patched the NDK's sysroot explicitly.
+> * **Pkg-Config Leaks:** Configured script modified to use strict `PKG_CONFIG_LIBDIR` and `pkg-config --static`.
+> * **Thread Cancellation:** `shout` plugin disabled due to OpenHarmony missing `pthread_setcancelstate`.
+> * **C++ Runtime Linking:** Added `-lc++_shared` to global `LDFLAGS` in `scripts/build_ohos.sh` to ensure static C++ contribs (x265, libgme, taglib, etc.) can link correctly without patching volatile `.pc` files.
+> * **OpenGL Desktop Detection:** Forced `have_gl="no"` in `configure.ac` and disabled `--visual` plugins to avoid desktop OpenGL linkage errors.
 
 ### 2.6 Create the VLC Plugin Installation Bundle
 - [ ] Run `make install DESTDIR=${VLC_INSTALL}`.

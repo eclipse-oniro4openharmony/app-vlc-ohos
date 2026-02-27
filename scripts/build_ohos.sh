@@ -38,7 +38,8 @@ export STRINGS="${OHOS_NDK}/llvm/bin/llvm-strings"
 export OBJDUMP="${OHOS_NDK}/llvm/bin/llvm-objdump"
 
 export CFLAGS="-fPIC"
-export LDFLAGS="-Wl,-z,max-page-size=16384"
+export CXXFLAGS="-fPIC"
+export LDFLAGS="-Wl,-z,max-page-size=16384 -lc++_shared"
 
 # Verification Logic
 echo "Verifying OpenHarmony SDK/NDK environment..."
