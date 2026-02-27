@@ -17,7 +17,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-cd "$SCRIPT_DIR" || exit 1
+cd "$SCRIPT_DIR/.." || exit 1
 
 # Build
 hvigorw assembleHap --mode module -p product=default -p module=entry -p buildMode=debug --stacktrace --no-parallel --no-daemon || { echo "Build failed"; exit 1; }
