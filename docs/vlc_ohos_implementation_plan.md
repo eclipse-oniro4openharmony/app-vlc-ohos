@@ -156,20 +156,18 @@
     --disable-jack \
     --disable-sndio \
     --disable-wayland \
-    --disable-x11 \
     --disable-v4l2 \
-    --disable-lua \
-    --enable-ohos
+    --disable-lua
   ```
-  > Note: `--enable-ohos` is a placeholder — this configure flag likely needs to be added to VLC's autotools as a new target platform (see step 2.2).
-- **Test:** `./configure` completes without fatal errors; `config.log` shows correct toolchain detection.
+  > Note: OpenHarmony target detection is handled natively by `configure.ac` via the host triplet.
+- [x] **Test:** `./configure` completes without fatal errors; `config.log` shows correct toolchain detection.
 
 ### 2.2 Patch VLC Autotools to Recognize `ohos` Target
-- [ ] Edit `libvlc/configure.ac`: add `aarch64-*-linux-ohos*` case in the host-triplet switch.
-- [ ] Define `HAVE_OHOS` preprocessor macro when the target is detected.
-- [ ] Add `AM_CONDITIONAL(HAVE_OHOS, test "${HAVE_OHOS}" = "1")` to enable conditional compilation in `Makefile.am` files.
-- [ ] Regenerate build files: `autoreconf -ivf`.
-- **Test:** `./configure --host=aarch64-linux-ohos ...` sets `HAVE_OHOS=1`.
+- [x] Edit `libvlc/configure.ac`: add `linux-ohos*` case in the host-triplet switch.
+- [x] Define `HAVE_OHOS` preprocessor macro when the target is detected.
+- [x] Add `AM_CONDITIONAL(HAVE_OHOS, test "${HAVE_OHOS}" = "1")` to enable conditional compilation in `Makefile.am` files.
+- [x] Regenerate build files: `autoreconf -ivf`.
+- [x] **Test:** `./configure --host=aarch64-linux-ohos ...` sets `HAVE_OHOS=1`.
 
 ### 2.3 Compile libvlccore
 - [ ] Run `make -C libvlc/lib -j$(nproc)`.

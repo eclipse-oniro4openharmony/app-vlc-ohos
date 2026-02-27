@@ -7,15 +7,15 @@ source "$(dirname "$0")/build_ohos.sh"
 export PATH=$(echo "$PATH" | sed -e 's/:\/home\/francesco\/command-line-tools\/sdk\/default\/openharmony\/toolchains//g' -e 's/\/home\/francesco\/command-line-tools\/sdk\/default\/openharmony\/toolchains://g')
 
 # Setup variables
-export VLC_PREFIX="$(pwd)/vlc_install"
+export VLC_PREFIX="$(pwd)/../vlc_install"
 export TARGET_TUPLE="aarch64-linux-ohos"
-export CONTRIB_DIR="$(pwd)/libvlc/contrib/aarch64-linux-ohos"
+export CONTRIB_DIR="$(pwd)/../libvlc/contrib/aarch64-linux-ohos"
 
 echo "============================================="
 echo "Configuring libVLC..."
 echo "============================================="
 
-cd libvlc || exit 1
+cd ../libvlc || exit 1
 
 echo "Running bootstrap..."
 ./bootstrap
@@ -39,9 +39,7 @@ echo "Running configure..."
     --disable-jack \
     --disable-sndio \
     --disable-wayland \
-    --disable-x11 \
     --disable-v4l2 \
-    --disable-lua \
-    --enable-ohos
+    --disable-lua
 
 echo "Configure finished with code $?"
