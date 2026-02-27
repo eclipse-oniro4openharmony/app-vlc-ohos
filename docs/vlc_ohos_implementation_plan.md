@@ -389,7 +389,7 @@
 > * **Wrapper Implementation:** Created `napi/vlc_napi_module.cpp` effectively exporting all the documented NAPI wrappers. The properties exported include functions for managing `libvlc_instance_t`, `libvlc_media_t`,  `libvlc_media_player_t`, and thread-safe events like `mediaPlayerAttachEvent`. We also added exports for `mediaPlayerGetPosition` and `mediaPlayerSetPosition` which were previously left out of the markdown example array.
 
 ### 3.8 Write the TypeScript Declaration File (Native Module Structure)
-- [ ] Create `entry/src/main/cpp/types/libvlcnative/index.d.ts`:
+- [x] Create `entry/src/main/cpp/types/libvlcnative/index.d.ts`:
   ```typescript
   export interface VlcInstance {}
   export interface VlcMedia {}
@@ -404,17 +404,19 @@
 
   export function mediaPlayerNew(instance: VlcInstance): VlcMediaPlayer;
   export function mediaPlayerSetMedia(player: VlcMediaPlayer, media: VlcMedia): void;
-  export function mediaPlayerPlay(player: VlcMediaPlayer): number;
+  export function mediaPlayerPlay(player: VlcMediaPlayer): void;
   export function mediaPlayerPause(player: VlcMediaPlayer): void;
   export function mediaPlayerStop(player: VlcMediaPlayer): void;
   export function mediaPlayerGetTime(player: VlcMediaPlayer): number;
   export function mediaPlayerSetTime(player: VlcMediaPlayer, time: number): void;
   export function mediaPlayerGetLength(player: VlcMediaPlayer): number;
+  export function mediaPlayerGetPosition(player: VlcMediaPlayer): number;
+  export function mediaPlayerSetPosition(player: VlcMediaPlayer, position: number): void;
   export function mediaPlayerSetNativeWindow(player: VlcMediaPlayer, surfaceId: string): void;
   export function mediaPlayerAttachEvent(player: VlcMediaPlayer, eventType: number, callback: (event: any) => void): void;
   export function mediaPlayerDetachEvent(player: VlcMediaPlayer, eventType: number): void;
   ```
-- [ ] Create `entry/src/main/cpp/types/libvlcnative/oh-package.json5`:
+- [x] Create `entry/src/main/cpp/types/libvlcnative/oh-package.json5`:
   ```json5
   {
     "name": "libvlcnative.so",
@@ -424,6 +426,9 @@
   }
   ```
 - **Test:** ArkTS code importing `libvlcnative.so` gets full IntelliSense / type-checking.
+
+> **Important Implementation Notes (Status):**
+> * **TypeScript Types**: Created the definitions as planned, but included `mediaPlayerGetPosition` and `mediaPlayerSetPosition` which were previously left out of the markdown example snippet but present in the NAPI binding modules. We also correctly defined `mediaPlayerPlay` as returning `void` instead of `number` to match the exact `libvlc_media_player_play` return behavior used in `napi/vlc_mediaplayer_wrap.cpp`.
 
 ### 3.9 Set Up the Native CMakeLists.txt
 - [ ] Create/update `entry/src/main/cpp/CMakeLists.txt`:
