@@ -7,15 +7,18 @@ source "$(dirname "$0")/build_ohos.sh"
 export PATH=$(echo "$PATH" | sed -e 's/:\/home\/francesco\/command-line-tools\/sdk\/default\/openharmony\/toolchains//g' -e 's/\/home\/francesco\/command-line-tools\/sdk\/default\/openharmony\/toolchains://g')
 
 # Setup variables
-export VLC_PREFIX="$(pwd)/../vlc_install"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+export VLC_PREFIX="${ROOT_DIR}/vlc_install"
 export TARGET_TUPLE="aarch64-linux-ohos"
-export CONTRIB_DIR="$(pwd)/../libvlc/contrib/aarch64-linux-ohos"
+export CONTRIB_DIR="${ROOT_DIR}/libvlc/contrib/aarch64-linux-ohos"
 
 echo "============================================="
 echo "Configuring libVLC..."
 echo "============================================="
 
-cd ../libvlc || exit 1
+cd "${ROOT_DIR}/libvlc" || exit 1
 
 echo "Running bootstrap..."
 ./bootstrap
@@ -40,6 +43,7 @@ echo "Running configure..."
     --disable-sndio \
     --disable-wayland \
     --disable-v4l2 \
-    --disable-lua
+    --disable-lua \
+    --disable-dbus
 
 echo "Configure finished with code $?"

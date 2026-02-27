@@ -28,8 +28,8 @@ export OHOS_SYSROOT="${OHOS_NDK}/sysroot"
 export OHOS_TOOLCHAIN="${OHOS_NDK}/build/cmake/ohos.toolchain.cmake"
 export TARGET_ARCH="aarch64-linux-ohos"
 
-export CC="${OHOS_NDK}/llvm/bin/clang"
-export CXX="${OHOS_NDK}/llvm/bin/clang++"
+export CC="${OHOS_NDK}/llvm/bin/clang --target=${TARGET_ARCH} --sysroot=${OHOS_SYSROOT}"
+export CXX="${OHOS_NDK}/llvm/bin/clang++ --target=${TARGET_ARCH} --sysroot=${OHOS_SYSROOT}"
 export AR="${OHOS_NDK}/llvm/bin/llvm-ar"
 export NM="${OHOS_NDK}/llvm/bin/llvm-nm"
 export RANLIB="${OHOS_NDK}/llvm/bin/llvm-ranlib"
@@ -37,8 +37,8 @@ export STRIP="${OHOS_NDK}/llvm/bin/llvm-strip"
 export STRINGS="${OHOS_NDK}/llvm/bin/llvm-strings"
 export OBJDUMP="${OHOS_NDK}/llvm/bin/llvm-objdump"
 
-export CFLAGS="--target=${TARGET_ARCH} --sysroot=${OHOS_SYSROOT} -fPIC"
-export LDFLAGS="--target=${TARGET_ARCH} --sysroot=${OHOS_SYSROOT} -Wl,-z,max-page-size=16384"
+export CFLAGS="-fPIC"
+export LDFLAGS="-Wl,-z,max-page-size=16384"
 
 # Verification Logic
 echo "Verifying OpenHarmony SDK/NDK environment..."
@@ -58,8 +58,9 @@ check_file() {
 }
 
 check_exec() {
-    if [ ! -x "$1" ]; then
-        echo "Error: Executable $1 not found or not executable."
+    local cmd=$(echo "$1" | awk '{print $1}')
+    if [ ! -x "$cmd" ]; then
+        echo "Error: Executable $cmd not found or not executable."
         return 1
     fi
 }

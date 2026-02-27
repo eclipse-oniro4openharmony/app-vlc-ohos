@@ -170,13 +170,18 @@
 - [x] **Test:** `./configure --host=aarch64-linux-ohos ...` sets `HAVE_OHOS=1`.
 
 ### 2.3 Compile libvlccore
-- [ ] Run `make -C libvlc/lib -j$(nproc)`.
-- [ ] Verify: `file libvlc/lib/.libs/libvlccore.so` → ARM aarch64.
-- [ ] Check symbol exports: `nm -D libvlc/lib/.libs/libvlccore.so | grep vlc_object_create` — symbol present.
+- [x] Run `make -C libvlc/src -j$(nproc)`.
+- [x] Verify: `file libvlc/src/.libs/libvlccore.so` → ARM aarch64.
+- [x] Check symbol exports: `nm -D libvlc/src/.libs/libvlccore.so | grep vlc_object_create` — symbol present.
 - **Test:** Library compiles without linker errors.
+> **Important Implementation Notes (Status):**
+> * **CC/CXX Environment Variables:** The `-target` and `--sysroot` flags were added directly to the `CC` and `CXX` variables in `scripts/build_ohos.sh` to prevent libtool from dropping linker flags.
+> * **Missing POSIX functions in OpenHarmony musl libc:** Patched `libvlc/src/posix/filesystem.c` to bypass `posix_close`. Patched `libvlc/src/posix/thread.c` to stub out `pthread_cancel`, `pthread_setcancelstate`, and `pthread_testcancel` using `#ifndef __OHOS__` since thread cancellation is not supported on OpenHarmony.
+> * **Dbus Linker Error:** Added `--disable-dbus` to `scripts/build_libvlc_ohos.sh` because DBus is not available on OpenHarmony.
+> * **libcompat Dependency:** Had to run `make -C libvlc/compat` prior to compiling `libvlc/src` due to missing `libcompat.la` linking dependency.
 
 ### 2.4 Compile libvlc
-- [ ] Run `make -C libvlc/src -j$(nproc)`.
+- [ ] Run `make -C libvlc/lib -j$(nproc)`.
 - [ ] Verify: `file libvlc/src/.libs/libvlc.so` → ARM aarch64.
 - [ ] Check symbol exports: `nm -D libvlc/src/.libs/libvlc.so | grep libvlc_new` — symbol present.
 - **Test:** Library compiles without linker errors.
