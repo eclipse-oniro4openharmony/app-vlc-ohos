@@ -27,4 +27,5 @@ target_link_libraries(vlcnative
     vlccore
     libace_napi.z.so
     libhilog_ndk.z.so
+    libnative_window.so
 )

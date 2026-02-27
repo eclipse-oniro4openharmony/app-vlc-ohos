@@ -541,16 +541,23 @@
 > * **Native Bindings Linkage & Lifecycle Test:** The execution of the ArkTS test successfully proved the `libvlcnative` binding. It initially crashed lacking system privileges and standard library linking paths until we updated our `run-ohos-app.sh` script to heavily automate the extraction of `libvlc.so`, `libvlccore.so`, and all built plug-ins directly into the ArkTS build system folder `entry/libs/arm64-v8a/`. 
 > * **VLC Plugin Initialization:** We modified `VlcNew` to effectively pass the `--plugin-path=/data/storage/el1/bundle/libs/arm64` argument and use `setenv` for `VLC_PLUGIN_PATH`. It subsequently successfully ran the engine lifecycle and actively loaded over 400 modules on the local device, confirming our environment setup. `vlc_init.log` output verified this execution path seamlessly initialized.
 
+> [!NOTE]
+> For all the following tasks: use the `scripts/run-ohos-app.sh` script that builds, runs and retrieve hilog logs. Also with `hdc file recv /data/app/el2/100/base/org.oniroproject.vlc/haps/entry/files/vlc_init.log ./vlc_init.log` to read the logs from the native side.
+
 ### 4.2 Implement NativeWindow Binding in NAPI (`MediaPlayerSetNativeWindow`)
-- [ ] Instead of a global hook in the `vout` module, we will implement the existing stub for `MediaPlayerSetNativeWindow` inside `napi/vlc_mediaplayer_wrap.cpp`:
+- [x] Instead of a global hook in the `vout` module, we will implement the existing stub for `MediaPlayerSetNativeWindow` inside `napi/vlc_mediaplayer_wrap.cpp`:
   - Unwrap the `libvlc_media_player_t` object.
   - Extract the `surfaceId` string from ArkTS arguments.
   - If the string is empty, we must release any stored `OHNativeWindow`.
   - If valid, parse the string to `uint64_t` (e.g., using `std::stoull` on the utf8 string).
   - Use `OH_NativeWindow_CreateNativeWindowFromSurfaceId(surfaceIdInt, &nativeWindow)` to obtain the `OHNativeWindow*`.
-- [ ] Bind the `OHNativeWindow*` to the `libvlc_media_player_t` instance.
+- [x] Bind the `OHNativeWindow*` to the `libvlc_media_player_t` instance.
   > **Note:** LibVLC usually expects custom HWND or similar types via APIs like `libvlc_media_player_set_nsobject()`. To support OpenHarmony properly, we should use a global thread-safe registry mapping `libvlc_media_player_t*` pointers to `OHNativeWindow*`, or inject the `OHNativeWindow*` into a VLC core variable using `var_CreateGetAddress(player, "ohos-window")` if safe.
 - **Test:** Passing the `surfaceId` from ArkTS correctly instantiates an `OHNativeWindow*` and is accessible asynchronously without crashing.
+> **Important Implementation Notes (Status):**
+> * **Wrapper Implementation:** Implemented `MediaPlayerSetNativeWindow` in `napi/vlc_mediaplayer_wrap.cpp`. An exported thread-safe map `g_windowRegistry` tracks each `libvlc_media_player_t*` instance alongside its corresponding `OHNativeWindow*`. It properly cleans up using `OH_NativeWindow_DestroyNativeWindow` on detach or on garbage collection.
+> * **VLC Integration:** We optionally call `libvlc_media_player_set_nsobject(player, nativeWindow)` to pass the active window straight into the libVLC Core natively alongside exposing it through the registry.
+> * **Native Dependencies:** Updated `entry/src/main/cpp/CMakeLists.txt` linking stage to include `libnative_window.so` which provides `OH_NativeWindow_CreateNativeWindowFromSurfaceId` avoiding undefined symbols in the native linker step.
 
 ### 4.3 Implement the VLC `vout` Display Module (Software Path)
 - [ ] Create the VLC-style module boilerplate in `modules/video_output/ohos_vout.c` (or `.cpp`):

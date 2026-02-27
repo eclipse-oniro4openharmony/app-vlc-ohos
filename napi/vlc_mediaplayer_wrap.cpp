@@ -1,11 +1,36 @@
 #include "vlc_napi.h"
 #include <vlc/vlc.h>
+#include <string>
+#include <mutex>
+#include <unordered_map>
+#include <native_window/external_window.h>
+
+static std::mutex g_windowRegistryMutex;
+static std::unordered_map<libvlc_media_player_t*, OHNativeWindow*> g_windowRegistry;
+
+extern "C" __attribute__((visibility("default"))) OHNativeWindow* GetOHNativeWindowForPlayer(libvlc_media_player_t* player) {
+    std::lock_guard<std::mutex> lock(g_windowRegistryMutex);
+    auto it = g_windowRegistry.find(player);
+    if (it != g_windowRegistry.end()) {
+        return it->second;
+    }
+    return nullptr;
+}
 
 static void MediaPlayerFinalizer(napi_env env, void* finalize_data, void* finalize_hint) {
     libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(finalize_data);
     if (player != nullptr) {
         MediaPlayerDetachAllEvents(player);
         libvlc_media_player_release(player);
+
+        std::lock_guard<std::mutex> lock(g_windowRegistryMutex);
+        auto it = g_windowRegistry.find(player);
+        if (it != g_windowRegistry.end()) {
+            if (it->second != nullptr) {
+                OH_NativeWindow_DestroyNativeWindow(it->second);
+            }
+            g_windowRegistry.erase(it);
+        }
     }
 }
 
@@ -304,6 +329,66 @@ napi_value MediaPlayerSetPosition(napi_env env, napi_callback_info info) {
 }
 
 napi_value MediaPlayerSetNativeWindow(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr, nullptr};
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) return nullptr;
+
+    if (argc < 2 || args[0] == nullptr || args[1] == nullptr) {
+        napi_throw_type_error(env, nullptr, "Expected 2 arguments (VlcMediaPlayer, surfaceId)");
+        return nullptr;
+    }
+
+    void* player_ptr = nullptr;
+    status = napi_unwrap(env, args[0], &player_ptr);
+    if (status != napi_ok || player_ptr == nullptr) {
+        napi_throw_type_error(env, nullptr, "Invalid VlcMediaPlayer argument");
+        return nullptr;
+    }
+    libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
+
+    char surfaceIdStr[256] = {0};
+    size_t result_len = 0;
+    status = napi_get_value_string_utf8(env, args[1], surfaceIdStr, sizeof(surfaceIdStr) - 1, &result_len);
+    if (status != napi_ok) {
+        napi_throw_type_error(env, nullptr, "Invalid surfaceId argument (must be string)");
+        return nullptr;
+    }
+
+    std::string surfaceId(surfaceIdStr, result_len);
+
+    std::lock_guard<std::mutex> lock(g_windowRegistryMutex);
+    
+    // Release previous if exists
+    auto it = g_windowRegistry.find(player);
+    if (it != g_windowRegistry.end()) {
+        if (it->second != nullptr) {
+            OH_NativeWindow_DestroyNativeWindow(it->second);
+        }
+        g_windowRegistry.erase(it);
+    }
+
+    if (!surfaceId.empty()) {
+        try {
+            uint64_t surfaceIdInt = std::stoull(surfaceId);
+            OHNativeWindow* nativeWindow = nullptr;
+            int32_t ret = OH_NativeWindow_CreateNativeWindowFromSurfaceId(surfaceIdInt, &nativeWindow);
+            if (ret == 0 && nativeWindow != nullptr) {
+                g_windowRegistry[player] = nativeWindow;
+                // Also optionally set it on VLC via nsobject
+                libvlc_media_player_set_nsobject(player, nativeWindow);
+            } else {
+                napi_throw_error(env, nullptr, "Failed to create NativeWindow from surfaceId");
+                return nullptr;
+            }
+        } catch (const std::exception& e) {
+            napi_throw_error(env, nullptr, "Invalid surfaceId format (stoull failed)");
+            return nullptr;
+        }
+    } else {
+        libvlc_media_player_set_nsobject(player, nullptr);
+    }
+
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
