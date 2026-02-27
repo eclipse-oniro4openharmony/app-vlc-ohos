@@ -157,3 +157,148 @@ napi_value MediaPlayerStop(napi_env env, napi_callback_info info) {
     napi_get_undefined(env, &undefined);
     return undefined;
 }
+
+napi_value MediaPlayerGetTime(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) return nullptr;
+
+    if (argc < 1 || args[0] == nullptr) {
+        napi_throw_type_error(env, nullptr, "Expected 1 argument (VlcMediaPlayer)");
+        return nullptr;
+    }
+
+    void* player_ptr = nullptr;
+    status = napi_unwrap(env, args[0], &player_ptr);
+    if (status != napi_ok || player_ptr == nullptr) {
+        napi_throw_type_error(env, nullptr, "Invalid VlcMediaPlayer argument");
+        return nullptr;
+    }
+    libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
+
+    libvlc_time_t time = libvlc_media_player_get_time(player);
+
+    napi_value result;
+    napi_create_int64(env, time, &result);
+    return result;
+}
+
+napi_value MediaPlayerSetTime(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr, nullptr};
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) return nullptr;
+
+    if (argc < 2 || args[0] == nullptr || args[1] == nullptr) {
+        napi_throw_type_error(env, nullptr, "Expected 2 arguments (VlcMediaPlayer, time)");
+        return nullptr;
+    }
+
+    void* player_ptr = nullptr;
+    status = napi_unwrap(env, args[0], &player_ptr);
+    if (status != napi_ok || player_ptr == nullptr) {
+        napi_throw_type_error(env, nullptr, "Invalid VlcMediaPlayer argument");
+        return nullptr;
+    }
+    libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
+
+    int64_t time = 0;
+    status = napi_get_value_int64(env, args[1], &time);
+    if (status != napi_ok) {
+        napi_throw_type_error(env, nullptr, "Invalid time argument (must be integer)");
+        return nullptr;
+    }
+
+    libvlc_media_player_set_time(player, static_cast<libvlc_time_t>(time));
+
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    return undefined;
+}
+
+napi_value MediaPlayerGetLength(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) return nullptr;
+
+    if (argc < 1 || args[0] == nullptr) {
+        napi_throw_type_error(env, nullptr, "Expected 1 argument (VlcMediaPlayer)");
+        return nullptr;
+    }
+
+    void* player_ptr = nullptr;
+    status = napi_unwrap(env, args[0], &player_ptr);
+    if (status != napi_ok || player_ptr == nullptr) {
+        napi_throw_type_error(env, nullptr, "Invalid VlcMediaPlayer argument");
+        return nullptr;
+    }
+    libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
+
+    libvlc_time_t length = libvlc_media_player_get_length(player);
+
+    napi_value result;
+    napi_create_int64(env, length, &result);
+    return result;
+}
+
+napi_value MediaPlayerGetPosition(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) return nullptr;
+
+    if (argc < 1 || args[0] == nullptr) {
+        napi_throw_type_error(env, nullptr, "Expected 1 argument (VlcMediaPlayer)");
+        return nullptr;
+    }
+
+    void* player_ptr = nullptr;
+    status = napi_unwrap(env, args[0], &player_ptr);
+    if (status != napi_ok || player_ptr == nullptr) {
+        napi_throw_type_error(env, nullptr, "Invalid VlcMediaPlayer argument");
+        return nullptr;
+    }
+    libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
+
+    float position = libvlc_media_player_get_position(player);
+
+    napi_value result;
+    napi_create_double(env, static_cast<double>(position), &result);
+    return result;
+}
+
+napi_value MediaPlayerSetPosition(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr, nullptr};
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) return nullptr;
+
+    if (argc < 2 || args[0] == nullptr || args[1] == nullptr) {
+        napi_throw_type_error(env, nullptr, "Expected 2 arguments (VlcMediaPlayer, position)");
+        return nullptr;
+    }
+
+    void* player_ptr = nullptr;
+    status = napi_unwrap(env, args[0], &player_ptr);
+    if (status != napi_ok || player_ptr == nullptr) {
+        napi_throw_type_error(env, nullptr, "Invalid VlcMediaPlayer argument");
+        return nullptr;
+    }
+    libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
+
+    double position = 0.0;
+    status = napi_get_value_double(env, args[1], &position);
+    if (status != napi_ok) {
+        napi_throw_type_error(env, nullptr, "Invalid position argument (must be number)");
+        return nullptr;
+    }
+
+    libvlc_media_player_set_position(player, static_cast<float>(position));
+
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    return undefined;
+}
+

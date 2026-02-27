@@ -306,11 +306,14 @@
 > * **Wrapper Implementation:** Created `napi/vlc_mediaplayer_wrap.cpp`. Added `MediaPlayerNew`, `MediaPlayerSetMedia`, `MediaPlayerPlay`, `MediaPlayerPause` and `MediaPlayerStop` mapping to libVLC APIs. Memory lifecycle is managed via garbage collection explicitly with `MediaPlayerFinalizer`.
 
 ### 3.5 Implement Time/Position Query Functions
-- [ ] Implement `MediaPlayerGetTime`, `MediaPlayerSetTime`.
-- [ ] Implement `MediaPlayerGetLength`.
-- [ ] Implement `MediaPlayerGetPosition`, `MediaPlayerSetPosition`.
-- [ ] Each function: `napi_unwrap` → call libvlc → `napi_create_int64` / `napi_create_double` → return.
+- [x] Implement `MediaPlayerGetTime`, `MediaPlayerSetTime`.
+- [x] Implement `MediaPlayerGetLength`.
+- [x] Implement `MediaPlayerGetPosition`, `MediaPlayerSetPosition`.
+- [x] Each function: `napi_unwrap` → call libvlc → `napi_create_int64` / `napi_create_double` → return.
 - **Test:** While playing, call `GetTime` from ArkTS — returns a non-zero value.
+
+> **Important Implementation Notes (Status):**
+> * **Wrapper Implementation:** Added `MediaPlayerGetTime`, `MediaPlayerSetTime`, `MediaPlayerGetLength`, `MediaPlayerGetPosition` and `MediaPlayerSetPosition` to `napi/vlc_mediaplayer_wrap.cpp`. Type checking ensures proper conversion between Javascript `int64_t`/`double` values and libVLC standard `libvlc_time_t` and `float` arguments.
 
 ### 3.6 Implement Thread-Safe Event Callbacks
 - [ ] Create `napi/vlc_events.cpp`.
