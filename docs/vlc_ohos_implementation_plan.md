@@ -260,19 +260,21 @@
 > * **Header Creation:** `napi/vlc_napi.h` has been successfully created with standard `extern "C"` C++ guards to ensure proper function export.
 
 ### 3.2 Implement `libvlc_instance_t` Object Wrapping
-- [ ] Create `napi/vlc_instance_wrap.cpp`.
-- [ ] Implement `VlcNew`:
+- [x] Create `napi/vlc_instance_wrap.cpp`.
+- [x] Implement `VlcNew`:
   - Call `napi_create_object` to instantiate an empty JS object to serve as the wrapper.
   - Parse `napi_value` arguments (VLC command-line args array).
   - Convert ArkTS string array → `const char* argv[]`.
   - Call `libvlc_new(argc, argv)`.
   - Use `napi_wrap(env, thisObj, instance, VlcInstanceFinalizer, nullptr, nullptr)` to bind the pointer (passing `nullptr` to the last argument creates a weak reference managed by GC).
-- [ ] Implement `VlcInstanceFinalizer`:
+- [x] Implement `VlcInstanceFinalizer`:
   - Call `libvlc_release(instance)`.
-- [ ] Implement `VlcRelease`:
+- [x] Implement `VlcRelease`:
   - Use `napi_remove_wrap(env, jsThis, &native_ptr)` to get the pointer AND detach the finalizer.
   - Safely call `libvlc_release(native_ptr)` only if `native_ptr` is not null (prevents double-free).
 - **Test:** Instantiate from ArkTS — no crash; VlcRelease frees memory (verify with ASan).
+> **Important Implementation Notes (Status):**
+> * **Wrapper Implementation:** Created `napi/vlc_instance_wrap.cpp` with logic mapping `vlcNew` and `vlcRelease` from ArkTS. Array arguments are safely mapped from `napi_value` strings into a dynamically allocated `const char*` array for `libvlc_new`. Memory lifecycle is correctly bound with `napi_wrap` and managed correctly through garbage collection or explicit `vlcRelease` triggering unwrap.
 
 ### 3.3 Implement `libvlc_media_t` Object Wrapping
 - [ ] Create `napi/vlc_media_wrap.cpp`.
