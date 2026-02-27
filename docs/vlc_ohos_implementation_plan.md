@@ -260,17 +260,17 @@
 ### 3.2 Implement `libvlc_instance_t` Object Wrapping
 - [ ] Create `napi/vlc_instance_wrap.cpp`.
 - [ ] Implement `VlcNew`:
+  - Call `napi_create_object` to instantiate an empty JS object to serve as the wrapper.
   - Parse `napi_value` arguments (VLC command-line args array).
   - Convert ArkTS string array → `const char* argv[]`.
   - Call `libvlc_new(argc, argv)`.
-  - Use `napi_wrap(env, thisObj, instance, VlcInstanceFinalizer, nullptr, nullptr)` to bind the pointer.
+  - Use `napi_wrap(env, thisObj, instance, VlcInstanceFinalizer, nullptr, nullptr)` to bind the pointer (passing `nullptr` to the last argument creates a weak reference managed by GC).
 - [ ] Implement `VlcInstanceFinalizer`:
   - Call `libvlc_release(instance)`.
 - [ ] Implement `VlcRelease`:
-  - Use `napi_unwrap()` to get the pointer.
-  - Call `libvlc_release()`.
-  - Use `napi_remove_wrap()` to detach the pointer.
-- **Test:** Instantiate from ArkTS — no crash; VlcRelease frees memory (verify with ASan or Valgrind).
+  - Use `napi_remove_wrap(env, jsThis, &native_ptr)` to get the pointer AND detach the finalizer.
+  - Safely call `libvlc_release(native_ptr)` only if `native_ptr` is not null (prevents double-free).
+- **Test:** Instantiate from ArkTS — no crash; VlcRelease frees memory (verify with ASan).
 
 ### 3.3 Implement `libvlc_media_t` Object Wrapping
 - [ ] Create `napi/vlc_media_wrap.cpp`.
@@ -308,21 +308,21 @@
 - [ ] Create `napi/vlc_events.cpp`.
 - [ ] Implement `MediaPlayerAttachEvent`:
   - Parse the event type (integer/enum) and the ArkTS callback function.
-  - Use `napi_create_threadsafe_function(env, callback, ..., VlcEventCallFromJS, ...)` to create a thread-safe function handle.
-  - Use `napi_create_reference` to prevent GC of the callback.
-  - Call `libvlc_event_attach(event_manager, event_type, NativeEventCallback, tsfn)`.
+  - Use `napi_create_string_utf8` to create a resource name (`"VLCEvent"`).
+  - Use `napi_create_threadsafe_function(env, callback, nullptr, resourceName, 0, 1, nullptr, nullptr, nullptr, VlcEventCallFromJS, &tsfn)` to create a thread-safe function handle. (The `tsfn` will internally hold a reference to the JS callback).
+  - Call `libvlc_event_attach(event_manager, event_type, NativeEventCallback, tsfn).`
 - [ ] Implement `NativeEventCallback` (C side, runs on VLC background thread):
-  - Package the event data into a struct.
+  - Package the event data into a struct allocated on the heap.
   - Call `napi_call_threadsafe_function(tsfn, data, napi_tsfn_nonblocking)`.
 - [ ] Implement `VlcEventCallFromJS` (C side, runs on main ArkTS thread):
+  - **Important:** Wrap the entire function body in `napi_open_handle_scope` / `napi_close_handle_scope` to prevent memory leaks during high-frequency events (like `TimeChanged`).
   - Unpack the event data struct.
   - Create `napi_value` objects for event fields.
   - Invoke the stored ArkTS callback.
-  - Properly manage `napi_handle_scope` for every callback invocation to prevent memory leaks.
+  - `delete` the unpacked event data struct.
 - [ ] Implement `MediaPlayerDetachEvent`:
   - `libvlc_event_detach()`.
-  - `napi_release_threadsafe_function()`.
-  - `napi_delete_reference()`.
+  - `napi_release_threadsafe_function(tsfn, napi_tsfn_release)`.
 -  Handle the following events at minimum:
   - `libvlc_MediaPlayerPlaying`
   - `libvlc_MediaPlayerPaused`
@@ -364,12 +364,13 @@
   EXTERN_C_END
   static napi_module vlcModule = { .nm_version = 1, .nm_flags = 0, .nm_filename = nullptr,
       .nm_register_func = RegisterModule, .nm_modname = "vlcnative", .nm_priv = nullptr, .reserved = {0} };
-  __attribute__((constructor)) void RegisterVlcModule(void) { napi_module_register(&vlcModule); }
+  extern "C" __attribute__((constructor)) void RegisterVlcNativeModule(void) { napi_module_register(&vlcModule); }
   ```
+- **Note:** Ensure `.nm_modname` exactly matches the project name in `CMakeLists.txt` (case-sensitive).
 - **Test:** Module loads without crash when imported in ArkTS.
 
-### 3.8 Write the TypeScript Declaration File
-- [ ] Create `entry/src/main/ets/vlcnative.d.ts`:
+### 3.8 Write the TypeScript Declaration File (Native Module Structure)
+- [ ] Create `entry/src/main/cpp/types/libvlcnative/index.d.ts`:
   ```typescript
   export interface VlcInstance {}
   export interface VlcMedia {}
@@ -394,7 +395,16 @@
   export function mediaPlayerAttachEvent(player: VlcMediaPlayer, eventType: number, callback: (event: any) => void): void;
   export function mediaPlayerDetachEvent(player: VlcMediaPlayer, eventType: number): void;
   ```
-- **Test:** ArkTS code importing `vlcnative` gets full IntelliSense / type-checking.
+- [ ] Create `entry/src/main/cpp/types/libvlcnative/oh-package.json5`:
+  ```json5
+  {
+    "name": "libvlcnative.so",
+    "types": "./index.d.ts",
+    "version": "1.0.0",
+    "description": "VLC NAPI bindings"
+  }
+  ```
+- **Test:** ArkTS code importing `libvlcnative.so` gets full IntelliSense / type-checking.
 
 ### 3.9 Set Up the Native CMakeLists.txt
 - [ ] Create/update `entry/src/main/cpp/CMakeLists.txt`:
@@ -426,7 +436,8 @@
   target_link_libraries(vlcnative
       vlc
       vlccore
-      ace_napi.z
+      libace_napi.z.so
+      libhilog_ndk.z.so
   )
   ```
 - [ ] Reference this `CMakeLists.txt` in `build-profile.json5` under `externalNativeOptions`.
