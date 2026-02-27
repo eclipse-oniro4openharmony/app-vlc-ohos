@@ -277,15 +277,17 @@
 > * **Wrapper Implementation:** Created `napi/vlc_instance_wrap.cpp` with logic mapping `vlcNew` and `vlcRelease` from ArkTS. Array arguments are safely mapped from `napi_value` strings into a dynamically allocated `const char*` array for `libvlc_new`. Memory lifecycle is correctly bound with `napi_wrap` and managed correctly through garbage collection or explicit `vlcRelease` triggering unwrap.
 
 ### 3.3 Implement `libvlc_media_t` Object Wrapping
-- [ ] Create `napi/vlc_media_wrap.cpp`.
-- [ ] Implement `MediaNewPath`:
+- [x] Create `napi/vlc_media_wrap.cpp`.
+- [x] Implement `MediaNewPath`:
   - `napi_unwrap` the VLC instance from the first argument.
   - Parse the file path string from the second argument.
   - Call `libvlc_media_new_path(instance, path)`.
   - Wrap the result with `napi_wrap`.
-- [ ] Implement `MediaNewLocation` (for network URLs).
-- [ ] Implement `MediaRelease` with finalizer calling `libvlc_media_release`.
+- [x] Implement `MediaNewLocation` (for network URLs).
+- [x] Implement `MediaRelease` with finalizer calling `libvlc_media_release`.
 - **Test:** Create a media object from a local file path in ArkTS — no crash.
+> **Important Implementation Notes (Status):**
+> * **Wrapper Implementation:** Created `napi/vlc_media_wrap.cpp`. Added `MediaNewPath` and `MediaNewLocation` mapping to libVLC APIs. String arguments are correctly unmarshaled from Node-API values. Object wrapping handles garbage collection effectively with `MediaFinalizer`, while `MediaRelease` provides explicit unwrap/release functionality with protections against double-free errors.
 
 ### 3.4 Implement `libvlc_media_player_t` Object Wrapping
 - [ ] Create `napi/vlc_mediaplayer_wrap.cpp`.
