@@ -349,7 +349,7 @@
 > * **Wrapper Implementation:** Created `napi/vlc_events.cpp`. The thread-safe event loop has been effectively set up using `napi_create_threadsafe_function`. Callback attachments and detaching correctly link and unlink respectively. We added an internal routine `MediaPlayerDetachAllEvents` to the native interface so memory cleanup of background events happens synchronously with NAPI lifecycle finalization of media players.
 
 ### 3.7 Create the NAPI Module Registration
-- [ ] Create `napi/vlc_napi_module.cpp`:
+- [x] Create `napi/vlc_napi_module.cpp`:
   ```cpp
   static napi_value Init(napi_env env, napi_value exports) {
       napi_property_descriptor desc[] = {
@@ -366,6 +366,8 @@
           {"mediaPlayerGetTime",    nullptr, MediaPlayerGetTime,    nullptr, nullptr, nullptr, napi_default, nullptr},
           {"mediaPlayerSetTime",    nullptr, MediaPlayerSetTime,    nullptr, nullptr, nullptr, napi_default, nullptr},
           {"mediaPlayerGetLength",  nullptr, MediaPlayerGetLength,  nullptr, nullptr, nullptr, napi_default, nullptr},
+          {"mediaPlayerGetPosition",nullptr, MediaPlayerGetPosition,nullptr, nullptr, nullptr, napi_default, nullptr},
+          {"mediaPlayerSetPosition",nullptr, MediaPlayerSetPosition,nullptr, nullptr, nullptr, napi_default, nullptr},
           {"mediaPlayerSetNativeWindow", nullptr, MediaPlayerSetNativeWindow, nullptr, nullptr, nullptr, napi_default, nullptr},
           {"mediaPlayerAttachEvent",    nullptr, MediaPlayerAttachEvent,    nullptr, nullptr, nullptr, napi_default, nullptr},
           {"mediaPlayerDetachEvent",    nullptr, MediaPlayerDetachEvent,    nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -382,6 +384,9 @@
   ```
 - **Note:** Ensure `.nm_modname` exactly matches the project name in `CMakeLists.txt` (case-sensitive).
 - **Test:** Module loads without crash when imported in ArkTS.
+
+> **Important Implementation Notes (Status):**
+> * **Wrapper Implementation:** Created `napi/vlc_napi_module.cpp` effectively exporting all the documented NAPI wrappers. The properties exported include functions for managing `libvlc_instance_t`, `libvlc_media_t`,  `libvlc_media_player_t`, and thread-safe events like `mediaPlayerAttachEvent`. We also added exports for `mediaPlayerGetPosition` and `mediaPlayerSetPosition` which were previously left out of the markdown example array.
 
 ### 3.8 Write the TypeScript Declaration File (Native Module Structure)
 - [ ] Create `entry/src/main/cpp/types/libvlcnative/index.d.ts`:
