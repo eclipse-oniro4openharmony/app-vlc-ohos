@@ -290,18 +290,20 @@
 > * **Wrapper Implementation:** Created `napi/vlc_media_wrap.cpp`. Added `MediaNewPath` and `MediaNewLocation` mapping to libVLC APIs. String arguments are correctly unmarshaled from Node-API values. Object wrapping handles garbage collection effectively with `MediaFinalizer`, while `MediaRelease` provides explicit unwrap/release functionality with protections against double-free errors.
 
 ### 3.4 Implement `libvlc_media_player_t` Object Wrapping
-- [ ] Create `napi/vlc_mediaplayer_wrap.cpp`.
-- [ ] Implement `MediaPlayerNew`:
+- [x] Create `napi/vlc_mediaplayer_wrap.cpp`.
+- [x] Implement `MediaPlayerNew`:
   - `napi_unwrap` the VLC instance.
   - Call `libvlc_media_player_new(instance)`.
   - Wrap the result.
-- [ ] Implement `MediaPlayerSetMedia`:
+- [x] Implement `MediaPlayerSetMedia`:
   - `napi_unwrap` both the player and the media.
   - Call `libvlc_media_player_set_media(player, media)`.
-- [ ] Implement `MediaPlayerPlay` / `Pause` / `Stop`:
+- [x] Implement `MediaPlayerPlay` / `Pause` / `Stop`:
   - `napi_unwrap` the player.
   - Call the corresponding `libvlc_media_player_*` function.
 - **Test:** Create player → set media → play — VLC engine starts (visible in debug logs even without video/audio output yet).
+> **Important Implementation Notes (Status):**
+> * **Wrapper Implementation:** Created `napi/vlc_mediaplayer_wrap.cpp`. Added `MediaPlayerNew`, `MediaPlayerSetMedia`, `MediaPlayerPlay`, `MediaPlayerPause` and `MediaPlayerStop` mapping to libVLC APIs. Memory lifecycle is managed via garbage collection explicitly with `MediaPlayerFinalizer`.
 
 ### 3.5 Implement Time/Position Query Functions
 - [ ] Implement `MediaPlayerGetTime`, `MediaPlayerSetTime`.
