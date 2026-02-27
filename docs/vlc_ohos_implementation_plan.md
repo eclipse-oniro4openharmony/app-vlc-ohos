@@ -199,8 +199,8 @@
 > * **OpenGL Desktop Detection:** Forced `have_gl="no"` in `configure.ac` and disabled `--visual` plugins to avoid desktop OpenGL linkage errors.
 
 ### 2.6 Create the VLC Plugin Installation Bundle
-- [ ] Run `make install DESTDIR=${VLC_INSTALL}`.
-- [ ] Verify the following structure:
+- [x] Run `make install`.
+- [x] Verify the following structure:
   ```
   ${VLC_INSTALL}/
   ├── lib/
@@ -216,6 +216,9 @@
       └── vlc/
   ```
 - **Test:** `find ${VLC_INSTALL}/lib/vlc/plugins -name '*.so' | wc -l` returns > 100.
+> **Important Implementation Notes (Status):**
+> * **Installation Path:** `make install` correctly installed to the `--prefix` path configured in Step 2.1 (`vlc_install/`); `DESTDIR` was not needed.
+> * **Missing AppData File:** `make install` failed initially because `org.videolan.vlc.appdata.xml` was missing in `libvlc/share` (caused by disabling GUI plugins). We fixed this by running `touch share/org.videolan.vlc.appdata.xml` before `make install`.
 
 ---
 
