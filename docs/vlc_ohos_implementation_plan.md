@@ -181,9 +181,9 @@
 > * **libcompat Dependency:** Had to run `make -C libvlc/compat` prior to compiling `libvlc/src` due to missing `libcompat.la` linking dependency.
 
 ### 2.4 Compile libvlc
-- [ ] Run `make -C libvlc/lib -j$(nproc)`.
-- [ ] Verify: `file libvlc/src/.libs/libvlc.so` → ARM aarch64.
-- [ ] Check symbol exports: `nm -D libvlc/src/.libs/libvlc.so | grep libvlc_new` — symbol present.
+- [x] Run `make -C libvlc/lib -j$(nproc)`.
+- [x] Verify: `file libvlc/lib/.libs/libvlc.so` → ARM aarch64.
+- [x] Check symbol exports: `nm -D libvlc/lib/.libs/libvlc.so | grep libvlc_new` — symbol present.
 - **Test:** Library compiles without linker errors.
 
 ### 2.5 Compile VLC Built-in Plugins (Software Modules)
