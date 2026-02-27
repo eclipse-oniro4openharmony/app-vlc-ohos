@@ -11,3 +11,6 @@
 /.clang-tidy
 **/.test
 /.appanalyzer
+vlc_install/
+entry/libs/
+entry/build/

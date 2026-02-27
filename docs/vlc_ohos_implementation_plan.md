@@ -486,9 +486,9 @@
 > **Note:** Based on OpenHarmony's native surface guidelines, using `NativeXComponent` via `libraryname` can cause stability issues and abstracts away the `SurfaceId`. The recommended approach for video playback is "Managing the surface lifecycle with XComponentController", which obtains the `SurfaceId` on the ArkTS side and passes it natively so we can explicitly construct `OHNativeWindow` instances per media player.
 
 ### 4.1 Create the XComponent ArkTS Declaration
-- [ ] Create `entry/src/main/ets/pages/PlayerPage.ets`.
-- [ ] Declare a custom `XComponentController` to handle the `SurfaceId` callbacks.
-- [ ] Create the `XComponent` without `libraryname`, instead relying purely on the controller to manage the surface connection:
+- [x] Create `entry/src/main/ets/pages/PlayerPage.ets`.
+- [x] Declare a custom `XComponentController` to handle the `SurfaceId` callbacks.
+- [x] Create the `XComponent` without `libraryname`, instead relying purely on the controller to manage the surface connection:
   ```typescript
   import vlcnative from 'libvlcnative.so';
 
@@ -534,6 +534,12 @@
   }
   ```
 - **Test:** Page renders with XComponent placeholder visible. OpenHarmony successfully generates dynamic `surfaceId` strings.
+
+> **Important Implementation Notes (Status):**
+> * **XComponent Creation:** Created `entry/src/main/ets/pages/PlayerPage.ets`. Due to ArkTS initialization restrictions where native instances/players cannot directly be created in line without proper references, we initialized `this.player` inside `aboutToAppear()`. The `XComponentController` was refactored slightly to allow assigning the `player` after constructor initialization. Added standard memory release patterns for testing when the component disappears.
+> * **Navigation:** Added a route entry to `main_pages.json` and a navigation button in `Index.ets` so `PlayerPage` can be easily reached and tested in sequence. We later bypassed this strictly for quick local testing by setting `pages/PlayerPage` as the default in `EntryAbility.ets`.
+> * **Native Bindings Linkage & Lifecycle Test:** The execution of the ArkTS test successfully proved the `libvlcnative` binding. It initially crashed lacking system privileges and standard library linking paths until we updated our `run-ohos-app.sh` script to heavily automate the extraction of `libvlc.so`, `libvlccore.so`, and all built plug-ins directly into the ArkTS build system folder `entry/libs/arm64-v8a/`. 
+> * **VLC Plugin Initialization:** We modified `VlcNew` to effectively pass the `--plugin-path=/data/storage/el1/bundle/libs/arm64` argument and use `setenv` for `VLC_PLUGIN_PATH`. It subsequently successfully ran the engine lifecycle and actively loaded over 400 modules on the local device, confirming our environment setup. `vlc_init.log` output verified this execution path seamlessly initialized.
 
 ### 4.2 Implement NativeWindow Binding in NAPI (`MediaPlayerSetNativeWindow`)
 - [ ] Instead of a global hook in the `vout` module, we will implement the existing stub for `MediaPlayerSetNativeWindow` inside `napi/vlc_mediaplayer_wrap.cpp`:

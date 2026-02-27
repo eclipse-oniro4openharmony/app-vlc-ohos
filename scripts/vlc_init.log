@@ -1,0 +1,43 @@
+Warning: option --plugin-path no longer exists.
+Warning: option --plugin-path no longer exists.
+[0000ffff043ea8c0] main libvlc debug: VLC media player - 3.0.23 Vetinari
+[0000ffff043ea8c0] main libvlc debug: Copyright © 1996-2025 the VideoLAN team
+[0000ffff043ea8c0] main libvlc debug: revision 3.0.23-2-206-g2d7574d8d5a
+[0000ffff043ea8c0] main libvlc debug: configured with ./configure  '--host=aarch64-linux-ohos' '--prefix=/home/francesco/Desktop/vlc_ohos/vlc_install' '--with-contrib=/home/francesco/Desktop/vlc_ohos/libvlc/contrib/aarch64-linux-ohos' '--disable-a52' '--disable-xcb' '--disable-qt' '--disable-skins2' '--disable-vlc' '--enable-nls=no' '--disable-alsa' '--disable-pulse' '--disable-jack' '--disable-sndio' '--disable-wayland' '--disable-v4l2' '--disable-lua' '--disable-dbus' '--disable-shout' '--disable-taglib' '--disable-visual' 'host_alias=aarch64-linux-ohos' 'CC=/home/francesco/setup-ohos-sdk/linux/20/native/llvm/bin/clang --target=aarch64-linux-ohos --sysroot=/home/francesco/setup-ohos-sdk/linux/20/native/sysroot' 'CFLAGS=-fPIC' 'LDFLAGS=-Wl,-z,max-page-size=16384 -lc++_shared' 'CXX=/home/francesco/setup-ohos-sdk/linux/20/native/llvm/bin/clang++ --target=aarch64-linux-ohos --sysroot=/home/francesco/setup-ohos-sdk/linux/20/native/sysroot' 'CXXFLAGS=-fPIC' 'PKG_CONFIG_PATH=' 'PKG_CONFIG=pkg-config --static' 'PKG_CONFIG_LIBDIR=/home/francesco/Desktop/vlc_ohos/libvlc/contrib/aarch64-linux-ohos/lib/pkgconfig'
+[0000ffff043ea8c0] main libvlc debug: searching plug-in modules
+[0000ffff043ea8c0] main libvlc debug: loading plugins cache file /data/storage/el1/bundle/libs/arm64/vlc/plugins/plugins.dat
+[0000ffff043ea8c0] main libvlc warning: cannot read /data/storage/el1/bundle/libs/arm64/vlc/plugins/plugins.dat: No such file or directory
+[0000ffff043ea8c0] main libvlc debug: recursively browsing `/data/storage/el1/bundle/libs/arm64/vlc/plugins'
+[0000ffff043ea8c0] main libvlc debug: loading plugins cache file /data/storage/el1/bundle/libs/arm64/plugins.dat
+[0000ffff043ea8c0] main libvlc warning: cannot read /data/storage/el1/bundle/libs/arm64/plugins.dat: No such file or directory
+[0000ffff043ea8c0] main libvlc debug: recursively browsing `/data/storage/el1/bundle/libs/arm64'
+[0000ffff043ea8c0] main libvlc debug: plug-ins loaded: 425 modules
+[0000ffff04d47850] main logger debug: looking for logger module matching "any": 3 candidates
+[0000ffff04d47850] main logger debug: using logger module "console"
+[0000ffff043ea8c0] main libvlc debug: translation test: code is "C"
+[0000ffff043fde50] main keystore debug: looking for keystore module matching "memory": 2 candidates
+[0000ffff043fde50] main keystore debug: using keystore module "memory"
+[0000ffff04311af0] main generic debug: creating audio output
+[0000ffff043dfcf0] main audio output debug: looking for audio output module matching "any": 3 candidates
+[0000ffff043dfcf0] main audio output debug: no audio output modules matched
+[0000ffff043dfcf0] main audio output error: no suitable audio output module
+[0000ffff03a8abe0] main input debug: Creating an input for 'BigBuckBunny.mp4'
+[0000ffff03a8abe0] main input debug: using timeshift granularity of 50 MiB
+[0000ffff03a8abe0] main input debug: using default timeshift path
+[0000ffff03a8abe0] main input debug: `http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4' gives access `http' demux `any' path `commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+[0000ffff04d48b10] main input source debug: creating demux: access='http' demux='any' location='commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4' file='(null)'
+[0000ffff047536c0] main demux debug: looking for access_demux module matching "http": 14 candidates
+[0000ffff047536c0] main demux debug: no access_demux modules matched
+[0000ffff03a70ab0] main stream debug: creating access: http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4
+[0000ffff03a70ab0] main stream debug: looking for access module matching "http": 24 candidates
+[0000ffff03a70ab0] http stream debug: resolving commondatastorage.googleapis.com ...
+[0000ffff03a70ab0] http stream error: cannot resolve commondatastorage.googleapis.com: Invalid flags
+[0000ffff03a70ab0] access stream error: HTTP connection failure
+[0000ffff03a70ab0] http stream debug: querying proxy for http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4
+[0000ffff03a70ab0] http stream debug: no proxy
+[0000ffff03a70ab0] http stream debug: http: server='commondatastorage.googleapis.com' port=80 file='/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+[0000ffff03a70ab0] main stream debug: no access modules matched
+[0000ffff03a8abe0] main input error: Your input can't be opened
+[0000ffff03a8abe0] main input error: VLC is unable to open the MRL 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'. Check the log for details.
+libEGL warning: ohos_create_window_surface
+libEGL warning: fence_fd = 43

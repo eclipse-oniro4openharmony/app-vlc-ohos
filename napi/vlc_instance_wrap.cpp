@@ -45,6 +45,12 @@ napi_value VlcNew(napi_env env, napi_callback_info info) {
         c_args.push_back(s.c_str());
     }
 
+    setenv("VLC_PLUGIN_PATH", "/data/storage/el1/bundle/libs/arm64", 1);
+    
+    // Redirect stderr to file for debugging
+    freopen("/data/storage/el2/base/haps/entry/files/vlc_init.log", "w", stderr);
+    freopen("/data/storage/el2/base/haps/entry/files/vlc_init.log", "a", stdout);
+
     libvlc_instance_t* instance = libvlc_new(c_args.size(), c_args.data());
     if (!instance) {
         napi_throw_error(env, nullptr, "Failed to create libvlc instance");
