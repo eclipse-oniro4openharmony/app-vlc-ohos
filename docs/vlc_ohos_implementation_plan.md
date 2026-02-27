@@ -137,9 +137,9 @@
 ## Phase 2 — Cross-Compile libVLC Core
 
 ### 2.1 Configure libVLC for OpenHarmony
-- [ ] Create `scripts/build_libvlc_ohos.sh`.
-- [ ] Navigate to `libvlc/` and run the bootstrap: `./bootstrap`.
-- [ ] Run `./configure` with:
+- [x] Create `scripts/build_libvlc_ohos.sh`.
+- [x] Navigate to `libvlc/` and run the bootstrap: `./bootstrap`.
+- [x] Run `./configure` with:
   ```bash
   ./configure \
     --host=aarch64-linux-ohos \
@@ -158,6 +158,7 @@
     --disable-wayland \
     --disable-x11 \
     --disable-v4l2 \
+    --disable-lua \
     --enable-ohos
   ```
   > Note: `--enable-ohos` is a placeholder — this configure flag likely needs to be added to VLC's autotools as a new target platform (see step 2.2).
