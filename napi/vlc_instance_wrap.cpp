@@ -41,6 +41,7 @@ napi_value VlcNew(napi_env env, napi_callback_info info) {
         }
     }
 
+    c_args.push_back("vlc_ohos"); // Prepend dummy program name
     for (const auto& s : arg_strs) {
         c_args.push_back(s.c_str());
     }

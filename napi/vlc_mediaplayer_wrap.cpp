@@ -371,21 +371,31 @@ napi_value MediaPlayerSetNativeWindow(napi_env env, napi_callback_info info) {
     if (!surfaceId.empty()) {
         try {
             uint64_t surfaceIdInt = std::stoull(surfaceId);
+            fprintf(stderr, "MediaPlayerSetNativeWindow: surfaceId=%s (int=%llu)\n", surfaceId.c_str(), (unsigned long long)surfaceIdInt);
             OHNativeWindow* nativeWindow = nullptr;
             int32_t ret = OH_NativeWindow_CreateNativeWindowFromSurfaceId(surfaceIdInt, &nativeWindow);
             if (ret == 0 && nativeWindow != nullptr) {
+                fprintf(stderr, "MediaPlayerSetNativeWindow: Successfully created NativeWindow %p\n", nativeWindow);
                 g_windowRegistry[player] = nativeWindow;
+                
+                char ptrStr[32];
+                snprintf(ptrStr, sizeof(ptrStr), "%p", nativeWindow);
+                setenv("VLC_OHOS_WINDOW", ptrStr, 1);
+
                 // Also optionally set it on VLC via nsobject
                 libvlc_media_player_set_nsobject(player, nativeWindow);
             } else {
+                fprintf(stderr, "MediaPlayerSetNativeWindow: Failed to create NativeWindow, ret=%d\n", ret);
                 napi_throw_error(env, nullptr, "Failed to create NativeWindow from surfaceId");
                 return nullptr;
             }
         } catch (const std::exception& e) {
+            fprintf(stderr, "MediaPlayerSetNativeWindow: stoull failed for surfaceId %s\n", surfaceId.c_str());
             napi_throw_error(env, nullptr, "Invalid surfaceId format (stoull failed)");
             return nullptr;
         }
     } else {
+        fprintf(stderr, "MediaPlayerSetNativeWindow: surfaceId is empty, clearing window\n");
         libvlc_media_player_set_nsobject(player, nullptr);
     }
 

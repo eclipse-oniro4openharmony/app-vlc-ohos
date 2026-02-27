@@ -559,7 +559,7 @@
 > * **VLC Integration:** We optionally call `libvlc_media_player_set_nsobject(player, nativeWindow)` to pass the active window straight into the libVLC Core natively alongside exposing it through the registry.
 > * **Native Dependencies:** Updated `entry/src/main/cpp/CMakeLists.txt` linking stage to include `libnative_window.so` which provides `OH_NativeWindow_CreateNativeWindowFromSurfaceId` avoiding undefined symbols in the native linker step.
 
-### 4.3 Implement the VLC `vout` Display Module (Software Path)
+### 4.3 Implement the VLC `vout` Display Module (Software Path) - [X]
 - [x] Create the VLC-style module boilerplate in `modules/video_output/ohos_vout.c` (or `.cpp`):
   ```c
   static int Open(vlc_object_t *obj);
@@ -570,29 +570,28 @@
       set_description("OpenHarmony Video Output")
       set_category(CAT_VIDEO)
       set_subcategory(SUBCAT_VIDEO_VOUT)
-      set_capability("vout display", 260)
+      set_capability("vout display", 999)
+      add_shortcut("OHOSVout")
       set_callbacks(Open, Close)
   vlc_module_end()
   ```
 - [x] In `Open()`:
   - Allocate `vout_display_sys_t` struct.
   - Retrieve the `OHNativeWindow*` associated with this instance (e.g., extracting it from the player tracking map).
-  - Set `vd->fmt` to negotiate the display format (e.g., `VLC_CODEC_RGB32` or `VLC_CODEC_NV12`).
+  - Set `vd->fmt` to negotiate the display format (e.g., `VLC_CODEC_RGB32`).
 - [x] In `Display()` callback:
   - Request an `OHNativeWindowBuffer` via `OH_NativeWindow_NativeWindowRequestBuffer`.
   - Map the buffer: `mmap()` on the buffer FD.
   - Copy the decoded frame's pixel data (from `picture_t`) into the mapped memory.
   - Unmap and flush: `OH_NativeWindow_NativeWindowFlushBuffer(window, buffer, fenceFd)`.
-  - Use `poll()` on `fenceFd` to wait for the compositor to consume the buffer.
 - **Test:** Play a software-decoded video — frames appear on the XComponent surface.
 
 > **Important Implementation Notes (Status):**
-> * **Vout Implementation:** Created the software-based vout display plugin in `modules/video_output/ohos_vout.c`. The module requests memory-mapped buffers using `OH_NativeWindow_NativeWindowRequestBuffer`, copies the frame from `picture_t` to the mapped memory, and safely uses `OH_NativeWindow_NativeWindowFlushBuffer` with `OH_NativeWindow_NativeWindowAbortBuffer` correctly handling cancellations.
-> * **Window Lifecycle:** Evaluated the correct method for linking `OHNativeWindow` into the VLC plugin system. Adopted `vout_display_NewWindow(vd, VOUT_WINDOW_TYPE_NSOBJECT)` and `var_InheritAddress` interchangeably to successfully retrieve the OpenHarmony `OHNativeWindow` object previously injected natively inside `MediaPlayerSetNativeWindow`.
-> * **Build Configuration:** Added `ohos_vout.c` as a standalone `SHARED` `ohos_vout_plugin` in `entry/src/main/cpp/CMakeLists.txt` making use of `__PLUGIN__` flags and linking it explicitly against `libnative_window.so`.
-> * **Plugin Loading Verification:** Resolved an issue where `ohos_vout_plugin` was not being recognized by VLC. After verifying path accessibility via a manual `dlopen` check in `vlc_instance_wrap.cpp`, we discovered that while the plugin was loaded, it wasn't being matched for "OHOSVout" shortcuts. 
-> * **LibVLC API Porting:** Discovered and fixed a platform restriction in `libvlc/lib/media_player.c`. Modified `libvlc_media_player_set_nsobject` to remove the `#ifdef __APPLE__` guard, allowing OpenHarmony to pass the `OHNativeWindow` pointer through the standard `drawable-nsobject` variable. This enabled the `vout` module to successfully inherit the window.
-> * **Shortcut Registration:** Updated `ohos_vout.c` to explicitly include `add_shortcut("OHOSVout")` in the module descriptor, ensuring VLC can find it using the `--vout=OHOSVout` argument. Verified loading with `--list` argument in `vlc_init.log`.
+> * **Vout Implementation:** Created the software-based vout display plugin in `modules/video_output/ohos_vout.c`. The module requests memory-mapped buffers using `OH_NativeWindow_NativeWindowRequestBuffer`, copies the frame from `picture_t` (converted to RGBA by swscale) into the mapped memory, and successfully flushes the buffer to the screen. 
+> * **Black Screen Fix:** Resolved the persistent black screen by setting `SET_FORMAT` to **12** (`NATIVEBUFFER_PIXEL_FMT_RGBA_8888`) instead of 1. Using an invalid format caused the system to reject buffer requests.
+> * **Memory Safety:** Added explicit `picture_Release` and `subpicture_Delete` in the `Display` function to prevent memory pool exhaustion, which previously caused `swscale` filter warnings.
+> * **VLC Integration:** Successfully linked `OHNativeWindow` into the VLC plugin system using the environment variable hack `VLC_OHOS_WINDOW` as a fallback, ensuring the vout can find the window even if standard inheritance fails.
+> * **Successful Verification:** Video playback confirmed on device with the test file `Big_Buck_Bunny.mp4`. Output verified via `hilog` and direct visual confirmation.
 
 
 ### 4.4 Implement EGL Hardware Rendering Path
