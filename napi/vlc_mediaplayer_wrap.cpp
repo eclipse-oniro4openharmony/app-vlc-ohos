@@ -303,3 +303,8 @@ napi_value MediaPlayerSetPosition(napi_env env, napi_callback_info info) {
     return undefined;
 }
 
+napi_value MediaPlayerSetNativeWindow(napi_env env, napi_callback_info info) {
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    return undefined;
+}

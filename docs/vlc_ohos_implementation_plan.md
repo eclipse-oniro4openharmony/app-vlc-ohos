@@ -431,13 +431,13 @@
 > * **TypeScript Types**: Created the definitions as planned, but included `mediaPlayerGetPosition` and `mediaPlayerSetPosition` which were previously left out of the markdown example snippet but present in the NAPI binding modules. We also correctly defined `mediaPlayerPlay` as returning `void` instead of `number` to match the exact `libvlc_media_player_play` return behavior used in `napi/vlc_mediaplayer_wrap.cpp`.
 
 ### 3.9 Set Up the Native CMakeLists.txt
-- [ ] Create/update `entry/src/main/cpp/CMakeLists.txt`:
+- [x] Create/update `entry/src/main/cpp/CMakeLists.txt`:
   ```cmake
   cmake_minimum_required(VERSION 3.16)
   project(vlcnative)
 
   set(VLC_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../vlc_install")
-  set(CONTRIB_PREFIX  "${CMAKE_CURRENT_SOURCE_DIR}/../../../../contrib_prefix")
+  set(CONTRIB_PREFIX  "${CMAKE_CURRENT_SOURCE_DIR}/../../../../libvlc/contrib/aarch64-linux-ohos")
 
   add_library(vlcnative SHARED
       ${CMAKE_CURRENT_SOURCE_DIR}/../../../../napi/vlc_napi_module.cpp
@@ -464,8 +464,13 @@
       libhilog_ndk.z.so
   )
   ```
-- [ ] Reference this `CMakeLists.txt` in `build-profile.json5` under `externalNativeOptions`.
-- **Test:** `hvigor build` compiles `libvlcnative.so` without errors.
+- [x] Reference this `CMakeLists.txt` in `entry/build-profile.json5` under `externalNativeOptions`.
+- **Test:** `hvigorw assembleApp` compiles `libvlcnative.so` without errors.
+> **Important Implementation Notes (Status):**
+> * **CMakeLists.txt Configuration:** The `CONTRIB_PREFIX` was updated to accurately point to `libvlc/contrib/aarch64-linux-ohos`. 
+> * **Build Config:** To integrate CMake with Hvigor, we added the `externalNativeOptions` block targeting `arm64-v8a` into `entry/build-profile.json5` under `buildOption`.
+> * **Missing Stub Fix:** Added a stub for `MediaPlayerSetNativeWindow` inside `napi/vlc_mediaplayer_wrap.cpp` to resolve an `undefined symbol` error discovered during native linking.
+> * **Hvigor Execution:** Testing required using `hvigorw assembleApp` via the global `hvigorw` command line tool to properly trigger the native CMake build and bundle generation.
 
 ### 3.10 (Optional) Investigate SWIG for Automated Binding Generation
 - [ ] Install SWIG with Node-API backend.
