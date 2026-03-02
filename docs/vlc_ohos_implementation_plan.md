@@ -591,6 +591,8 @@
 > * **Black Screen Fix:** Resolved the persistent black screen by setting `SET_FORMAT` to **12** (`NATIVEBUFFER_PIXEL_FMT_RGBA_8888`) instead of 1. Using an invalid format caused the system to reject buffer requests.
 > * **Memory Safety:** Added explicit `picture_Release` and `subpicture_Delete` in the `Display` function to prevent memory pool exhaustion, which previously caused `swscale` filter warnings.
 > * **VLC Integration:** Successfully linked `OHNativeWindow` into the VLC plugin system using the environment variable hack `VLC_OHOS_WINDOW` as a fallback, ensuring the vout can find the window even if standard inheritance fails.
+>   - **TODO:** Replace the environment variable hack with a more robust pointer-passing mechanism (e.g., proper libvlc object variables or a shared native registry) to ensure thread-safety and avoid potential global state issues.
+
 > * **Successful Verification:** Video playback confirmed on device with the test file `Big_Buck_Bunny.mp4`. Output verified via `hilog` and direct visual confirmation.
 
 
@@ -637,7 +639,7 @@
 ## Phase 5 — Audio Output (aout) Module: OHAudio
 
 ### 5.1 Create the VLC `aout` Module Boilerplate
-- [ ] Create `modules/audio_output/ohos_aout.c`:
+- [x] Create `modules/audio_output/ohos_aout.c`:
   ```c
   static int Open(vlc_object_t *obj);
   static void Close(vlc_object_t *obj);
@@ -652,6 +654,9 @@
   vlc_module_end()
   ```
 - **Deliverable:** Module file with VLC module registration.
+> **Important Implementation Notes (Status):**
+> * **Aout Boilerplate:** Created the initial boilerplate for the OpenHarmony audio output module in `modules/audio_output/ohos_aout.c`. The module follows the VLC plugin architecture with `Open` and `Close` callbacks and is registered with the `audio output` capability.
+> * **Build System Integration:** Updated `entry/src/main/cpp/CMakeLists.txt` to compile `ohos_aout_plugin` as a shared library, linking against `libvlccore` and `libohaudio.so`.
 
 ### 5.2 Implement OHAudio Stream Builder Initialization
 - [ ] In `Open()`:
@@ -669,8 +674,8 @@
   else if (aout->format.i_format == VLC_CODEC_FL32)
       OH_AudioStreamBuilder_SetSampleFormat(builder, AUDIOSTREAM_SAMPLE_F32LE);
 
-  // Set audio usage to MUSIC for proper OS routing
-  OH_AudioStreamBuilder_SetRendererInfo(builder, AUDIOSTREAM_USAGE_MUSIC);
+  // Set audio usage to MOVIE for proper OS routing
+  OH_AudioStreamBuilder_SetRendererInfo(builder, AUDIOSTREAM_USAGE_MOVIE);
   ```
 - **Test:** Builder creation succeeds (no `OH_AudioStream_Result` error).
 
