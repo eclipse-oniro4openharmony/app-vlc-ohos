@@ -1,5 +1,31 @@
 import vlcnative from "libvlcnative.so";
 
+export enum VlcEvent {
+  MediaChanged = 0x100,
+  NothingSpecial = 0x101,
+  Opening = 0x102,
+  Buffering = 0x103,
+  Playing = 0x104,
+  Paused = 0x105,
+  Stopped = 0x106,
+  Forward = 0x107,
+  Backward = 0x108,
+  EndReached = 0x109,
+  EncounteredError = 0x10a,
+  TimeChanged = 0x10b,
+  PositionChanged = 0x10c,
+  LengthChanged = 0x111,
+}
+
+export interface VlcEventData {
+  type: number;
+  time?: number;
+  position?: number;
+  buffering?: number;
+}
+
+export type VlcEventCallback = (event: VlcEventData) => void;
+
 export class VlcService {
   private instance: vlcnative.VlcInstance | undefined = undefined;
   private player: vlcnative.VlcMediaPlayer | undefined = undefined;
@@ -87,15 +113,19 @@ export class VlcService {
     }
   }
 
-  onEvent(eventType: number, callback: (event: object) => void): void {
+  onEvent(eventType: VlcEvent, callback: VlcEventCallback): void {
     if (this.player) {
-      vlcnative.mediaPlayerAttachEvent(this.player, eventType, callback);
+      vlcnative.mediaPlayerAttachEvent(
+        this.player,
+        eventType as number,
+        callback as (event: object) => void,
+      );
     }
   }
 
-  detachEvent(eventType: number): void {
+  detachEvent(eventType: VlcEvent): void {
     if (this.player) {
-      vlcnative.mediaPlayerDetachEvent(this.player, eventType);
+      vlcnative.mediaPlayerDetachEvent(this.player, eventType as number);
     }
   }
 

@@ -913,15 +913,20 @@
   > * **Refactoring:** `PlayerPage.ets` was successfully refactored to use this service, reducing boilerplate and centralizing VLC management.
 - **Test:** Import and instantiate `VlcService` — no crash. Now used in `PlayerPage.ets`.
 
-### 7.2 Build the Player UI Page
-- [ ] Update `PlayerPage.ets` with playback controls:
+### 7.2 Build the Player UI Page - [X]
+- [x] Update `PlayerPage.ets` with playback controls:
   - Play/Pause button.
   - Seek slider (driven by `TimeChanged` events).
   - Time display (current / total).
   - Volume slider.
   - Aspect ratio toggle button.
-- [ ] Wire controls to `VlcService` methods.
+- [x] Wire controls to `VlcService` methods.
 - **Test:** UI renders all controls; tapping Play starts playback.
+> **Important Implementation Notes (Status):**
+> * **UI Implementation:** Developed a premium-looking player UI using ArkTS. The UI uses a `Stack` to overlay controls on top of the `XComponent`.
+> * **Event Integration:** Fully integrated with `VlcService` using typed event callbacks for `TimeChanged`, `PositionChanged`, `Playing`, and `Paused`.
+> * **Control Features:** Implemented play/pause toggle, seeking via a VLC-orange styled slider, time formatting (MM:SS), and an auto-hide mechanism for controls (5-second timeout).
+> * **ArkTS Compatibility:** Resolved lint errors by using `enum` for event types and renaming reserved property names like `position` to `playbackPosition`.
 
 ### 7.3 Implement File Picker Integration
 - [ ] Use OpenHarmony's `DocumentViewPicker` or `FilePicker` to let users select media files.
