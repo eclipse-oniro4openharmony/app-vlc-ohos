@@ -17,6 +17,12 @@ struct aout_sys_t
 {
     OH_AudioStreamBuilder *builder;
     OH_AudioRenderer *renderer;
+
+    vlc_mutex_t lock;
+    block_t *p_out_chain;
+    block_t **pp_out_last;
+    size_t i_out_size;
+    size_t i_out_max_size;
 };
 
 static int Open(vlc_object_t *obj);
@@ -37,23 +43,81 @@ static int32_t OnWriteData(OH_AudioRenderer* renderer,
                               int32_t bufferLen)
 {
     audio_output_t *aout = (audio_output_t*)userData;
+    struct aout_sys_t *sys = aout->sys;
     VLC_UNUSED(renderer);
     
-    // For now, fill with silence to keep it stable
-    memset(buffer, 0, bufferLen);
+    uint8_t *p_dst = buffer;
+    size_t i_to_copy = bufferLen;
+
+    vlc_mutex_lock(&sys->lock);
+
+    while (i_to_copy > 0 && sys->p_out_chain != NULL)
+    {
+        block_t *p_block = sys->p_out_chain;
+        size_t i_copy = __MIN(i_to_copy, p_block->i_buffer);
+
+        memcpy(p_dst, p_block->p_buffer, i_copy);
+
+        i_to_copy -= i_copy;
+        p_dst += i_copy;
+        sys->i_out_size -= i_copy;
+
+        if (i_copy == p_block->i_buffer)
+        {
+            sys->p_out_chain = p_block->p_next;
+            if (sys->p_out_chain == NULL)
+                sys->pp_out_last = &sys->p_out_chain;
+            block_Release(p_block);
+        }
+        else
+        {
+            p_block->p_buffer += i_copy;
+            p_block->i_buffer -= i_copy;
+        }
+    }
+
+    vlc_mutex_unlock(&sys->lock);
+
+    if (i_to_copy > 0)
+    {
+        // msg_Dbg(aout, "audio underrun: %zu bytes", i_to_copy);
+        memset(p_dst, 0, i_to_copy);
+    }
+
     return 0;
 }
 
 static void Play(audio_output_t *aout, block_t *block)
 {
-    VLC_UNUSED(aout);
-    block_Release(block);
+    struct aout_sys_t *sys = aout->sys;
+
+    vlc_mutex_lock(&sys->lock);
+
+    if (sys->i_out_size >= sys->i_out_max_size)
+    {
+        msg_Warn(aout, "audio buffer overflow, dropping block");
+        vlc_mutex_unlock(&sys->lock);
+        block_Release(block);
+        return;
+    }
+
+    block_ChainLastAppend(&sys->pp_out_last, block);
+    sys->i_out_size += block->i_buffer;
+
+    vlc_mutex_unlock(&sys->lock);
 }
 
 static void Flush(audio_output_t *aout, bool wait)
 {
-    VLC_UNUSED(aout);
+    struct aout_sys_t *sys = aout->sys;
     VLC_UNUSED(wait);
+
+    vlc_mutex_lock(&sys->lock);
+    block_ChainRelease(sys->p_out_chain);
+    sys->p_out_chain = NULL;
+    sys->pp_out_last = &sys->p_out_chain;
+    sys->i_out_size = 0;
+    vlc_mutex_unlock(&sys->lock);
 }
 
 static int Start(audio_output_t *aout, audio_sample_format_t *fmt)
@@ -140,6 +204,8 @@ static void Stop(audio_output_t *aout)
         OH_AudioStreamBuilder_Destroy(sys->builder);
         sys->builder = NULL;
     }
+
+    Flush(aout, false);
 }
 
 static int Open(vlc_object_t *obj)
@@ -149,8 +215,13 @@ static int Open(vlc_object_t *obj)
     if (unlikely(sys == NULL))
         return VLC_ENOMEM;
 
+    vlc_mutex_init(&sys->lock);
     sys->builder = NULL;
     sys->renderer = NULL;
+    sys->p_out_chain = NULL;
+    sys->pp_out_last = &sys->p_out_chain;
+    sys->i_out_size = 0;
+    sys->i_out_max_size = 2 * 1024 * 1024; // 2MB default limit
 
     aout->sys = sys;
     aout->start = Start;
@@ -166,6 +237,7 @@ static void Close(vlc_object_t *obj)
     audio_output_t *aout = (audio_output_t *)obj;
     struct aout_sys_t *sys = aout->sys;
 
+    vlc_mutex_destroy(&sys->lock);
     free(sys);
     msg_Dbg(aout, "Aout closed");
 }
