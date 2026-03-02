@@ -906,43 +906,12 @@
 ## Phase 7 — ArkTS UI and Application Integration
 
 ### 7.1 Create the VLC Service Wrapper in ArkTS
-- [ ] Create `entry/src/main/ets/services/VlcService.ets`:
-  ```typescript
-  import vlcnative from 'libvlcnative.so';
-
-  export class VlcService {
-    private instance: any;
-    private player: any;
-
-    constructor() {
-      this.instance = vlcnative.vlcNew(['--no-xlib', '-vvv']);
-    }
-
-    loadMedia(path: string): void {
-      const media = vlcnative.mediaNewPath(this.instance, path);
-      this.player = vlcnative.mediaPlayerNew(this.instance);
-      vlcnative.mediaPlayerSetMedia(this.player, media);
-      vlcnative.mediaRelease(media);
-    }
-
-    play(): void { vlcnative.mediaPlayerPlay(this.player); }
-    pause(): void { vlcnative.mediaPlayerPause(this.player); }
-    stop(): void { vlcnative.mediaPlayerStop(this.player); }
-    getTime(): number { return vlcnative.mediaPlayerGetTime(this.player); }
-    getLength(): number { return vlcnative.mediaPlayerGetLength(this.player); }
-    seekTo(ms: number): void { vlcnative.mediaPlayerSetTime(this.player, ms); }
-
-    onEvent(eventType: number, callback: (event: any) => void): void {
-      vlcnative.mediaPlayerAttachEvent(this.player, eventType, callback);
-    }
-
-    destroy(): void {
-      vlcnative.mediaPlayerStop(this.player);
-      vlcnative.vlcRelease(this.instance);
-    }
-  }
-  ```
-- **Test:** Import and instantiate `VlcService` — no crash.
+- [x] Create `entry/src/main/ets/services/VlcService.ets`:
+  > **Important Implementation Notes (Status):**
+  > * **Service Implementation:** Created `VlcService.ets` to encapsulate `libvlcnative` calls. It manages the `VlcInstance`, `VlcMediaPlayer`, and `VlcMedia` lifecycles.
+  > * **High-level API:** Provides a cleaner interface for the UI, including methods like `loadMedia`, `play`, `pause`, `stop`, `seekTo`, and `onEvent`.
+  > * **Refactoring:** `PlayerPage.ets` was successfully refactored to use this service, reducing boilerplate and centralizing VLC management.
+- **Test:** Import and instantiate `VlcService` — no crash. Now used in `PlayerPage.ets`.
 
 ### 7.2 Build the Player UI Page
 - [ ] Update `PlayerPage.ets` with playback controls:
