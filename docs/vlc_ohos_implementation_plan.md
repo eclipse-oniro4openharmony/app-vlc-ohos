@@ -659,25 +659,29 @@
 > * **Build System Integration:** Updated `entry/src/main/cpp/CMakeLists.txt` to compile `ohos_aout_plugin` as a shared library, linking against `libvlccore` and `libohaudio.so`.
 
 ### 5.2 Implement OHAudio Stream Builder Initialization
-- [ ] In `Open()`:
+- [x] In `Start()`:
   ```c
   OH_AudioStreamBuilder* builder;
   OH_AudioStreamBuilder_Create(&builder, AUDIOSTREAM_TYPE_RENDERER);
 
   // Map VLC audio format → OHAudio parameters
-  OH_AudioStreamBuilder_SetSamplingRate(builder, aout->format.i_rate);
-  OH_AudioStreamBuilder_SetChannelCount(builder, aout->format.i_channels);
+  OH_AudioStreamBuilder_SetSamplingRate(builder, fmt->i_rate);
+  OH_AudioStreamBuilder_SetChannelCount(builder, fmt->i_channels);
 
   // Map VLC sample format → OHAudio sample format
-  if (aout->format.i_format == VLC_CODEC_S16N)
+  if (fmt->i_format == VLC_CODEC_S16N)
       OH_AudioStreamBuilder_SetSampleFormat(builder, AUDIOSTREAM_SAMPLE_S16LE);
-  else if (aout->format.i_format == VLC_CODEC_FL32)
+  else if (fmt->i_format == VLC_CODEC_FL32)
       OH_AudioStreamBuilder_SetSampleFormat(builder, AUDIOSTREAM_SAMPLE_F32LE);
 
   // Set audio usage to MOVIE for proper OS routing
   OH_AudioStreamBuilder_SetRendererInfo(builder, AUDIOSTREAM_USAGE_MOVIE);
   ```
 - **Test:** Builder creation succeeds (no `OH_AudioStream_Result` error).
+> **Important Implementation Notes (Status):**
+> * **Renderer Initialization:** Implementation was moved to the `Start` callback instead of `Open`, as VLC audio output modules receive the negotiated `audio_sample_format_t` only during the `start` call. 
+> * **Format Mapping:** Successfully mapped VLC's `i_rate`, `i_channels`, and common codecs (`S16N`, `FL32`) to OHAudio equivalents. Added a fallback to `VLC_CODEC_S16N` if the input format is unsupported by OHAudio.
+> * **Resource Management:** Added `Stop` and `Close` callbacks to ensure the `OH_AudioStreamBuilder` and system memory are properly released when the stream stops or the module is unloaded.
 
 ### 5.3 Implement the Asynchronous Write Callback
 - [ ] Define the callback structure:
