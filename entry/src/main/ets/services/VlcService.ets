@@ -24,6 +24,11 @@ export interface VlcEventData {
   buffering?: number;
 }
 
+export interface VlcVideoSize {
+  width: number;
+  height: number;
+}
+
 export type VlcEventCallback = (event: VlcEventData) => void;
 
 export class VlcService {
@@ -104,6 +109,19 @@ export class VlcService {
   seekTo(ms: number): void {
     if (this.player) {
       vlcnative.mediaPlayerSetTime(this.player, ms);
+    }
+  }
+
+  getVideoSize(): VlcVideoSize {
+    if (this.player) {
+      return vlcnative.mediaPlayerGetVideoSize(this.player);
+    }
+    return { width: 0, height: 0 };
+  }
+
+  setDisplaySize(width: number, height: number): void {
+    if (this.player) {
+      vlcnative.mediaPlayerSetDisplaySize(this.player, width, height);
     }
   }
 

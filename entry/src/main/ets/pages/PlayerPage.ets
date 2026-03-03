@@ -7,7 +7,7 @@ class VlcXComponentController extends XComponentController {
   }
 
   onSurfaceChanged(surfaceId: string, rect: SurfaceRect): void {
-    // Optional: Inform VLC of display size changes through a native API
+    vlcService.setDisplaySize(rect.surfaceWidth, rect.surfaceHeight);
   }
 
   onSurfaceDestroyed(surfaceId: string): void {
@@ -27,6 +27,7 @@ struct PlayerPage {
   @State playbackPosition: number = 0;
   @State volume: number = 100;
   @State isControlsVisible: boolean = true;
+  @State videoAspectRatio: number = 16 / 9;
 
   private hideTimer: number = -1;
 
@@ -52,6 +53,10 @@ struct PlayerPage {
 
     vlcService.onEvent(VlcEvent.Playing, () => {
       this.isPlaying = true;
+      const size = vlcService.getVideoSize();
+      if (size.width > 0 && size.height > 0) {
+        this.videoAspectRatio = size.width / size.height;
+      }
     });
 
     vlcService.onEvent(VlcEvent.Paused, () => {
@@ -98,7 +103,7 @@ struct PlayerPage {
   }
 
   build() {
-    Stack() {
+    Stack({ alignContent: Alignment.Center }) {
       // Video Surface
       XComponent({
         id: this.xComponentId,
@@ -106,7 +111,9 @@ struct PlayerPage {
         controller: this.xComponentController,
       })
         .width("100%")
-        .height("100%")
+        .aspectRatio(this.videoAspectRatio)
+        .backgroundColor(Color.Black)
+        .align(Alignment.Center)
         .onClick(() => {
           this.toggleControls();
         })

@@ -42,6 +42,8 @@ typedef struct vout_display_sys_t {
     GLuint texture;
     GLuint vbo;
     GLint  u_texture;
+    unsigned width;
+    unsigned height;
 
     // GLES2 function pointers
     PFNGLCREATESHADERPROC CreateShader;
@@ -296,11 +298,34 @@ static void Display(vout_display_t *vd, picture_t *picture, subpicture_t *subpic
         return;
     }
 
+    // Check for resize request from environment (passed from NAPI)
+    char *resize_env = getenv("VLC_OHOS_RESIZE");
+    if (resize_env) {
+        unsigned w, h;
+        if (sscanf(resize_env, "%ux%u", &w, &h) == 2) {
+            if (w != sys->width || h != sys->height) {
+                msg_Dbg(vd, "Detected resize request from env: %ux%u", w, h);
+                sys->height = h;
+                vout_display_SendEventDisplaySize(vd, w, h);
+                setenv("VLC_OHOS_RESIZE", "", 1);
+            }
+        }
+    }
+
+    EGLint surface_width = 0, surface_height = 0;
+    eglQuerySurface(sys->display, sys->surface, EGL_WIDTH, &surface_width);
+    eglQuerySurface(sys->display, sys->surface, EGL_HEIGHT, &surface_height);
+    
+    if (surface_width != vd->fmt.i_width || surface_height != vd->fmt.i_height) {
+        msg_Dbg(vd, "Surface size mismatch: %dx%d vs vd->fmt %dx%d", 
+                surface_width, surface_height, vd->fmt.i_width, vd->fmt.i_height);
+    }
+
     if (!eglMakeCurrent(sys->display, sys->surface, sys->surface, sys->context)) {
         msg_Err(vd, "eglMakeCurrent failing in Display, eglError: 0x%x", eglGetError());
     }
 
-    sys->Viewport(0, 0, vd->fmt.i_width, vd->fmt.i_height);
+    sys->Viewport(0, 0, surface_width, surface_height);
     sys->ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     sys->Clear(GL_COLOR_BUFFER_BIT);
 
@@ -310,6 +335,11 @@ static void Display(vout_display_t *vd, picture_t *picture, subpicture_t *subpic
     sys->BindTexture(GL_TEXTURE_2D, sys->texture);
     
     const plane_t *p = &picture->p[0];
+    
+    // Calculate visible texture coordinates using vd->fmt for visibility
+    float tex_w = (float)vd->fmt.i_visible_width / (p->i_pitch / p->i_pixel_pitch);
+    float tex_h = (float)vd->fmt.i_visible_height / p->i_lines;
+
     sys->TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, p->i_pitch / p->i_pixel_pitch, p->i_lines, 0, GL_RGBA, GL_UNSIGNED_BYTE, p->p_pixels);
     
     GLenum err = sys->GetError();
@@ -319,7 +349,17 @@ static void Display(vout_display_t *vd, picture_t *picture, subpicture_t *subpic
 
     sys->Uniform1i(sys->u_texture, 0);
 
+    // Update vertices with correct texture coordinates
+    float vertices[] = {
+        -1.0f,  1.0f, 0.0f, 0.0f,  0.0f,
+        -1.0f, -1.0f, 0.0f, 0.0f,  tex_h,
+         1.0f,  1.0f, 0.0f, tex_w, 0.0f,
+         1.0f, -1.0f, 0.0f, tex_w, tex_h,
+    };
+
     sys->BindBuffer(GL_ARRAY_BUFFER, sys->vbo);
+    sys->BufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+
     GLint posAttrib = sys->GetAttribLocation(sys->program, "a_position");
     sys->EnableVertexAttribArray(posAttrib);
     sys->VertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), 0);
@@ -349,18 +389,31 @@ static int Control(vout_display_t *vd, int query, va_list args) {
             }
             return VLC_SUCCESS;
         }
-        case VOUT_DISPLAY_CHANGE_DISPLAY_FILLED:
+
+        case VOUT_DISPLAY_CHANGE_DISPLAY_FILLED: {
+            bool is_filled = va_arg(args, int);
+            msg_Dbg(vd, "Control: VOUT_DISPLAY_CHANGE_DISPLAY_FILLED %d", is_filled);
+            OH_NativeWindow_NativeWindowHandleOpt(vd->sys->window, 11 /* SET_SCALING_MODE */, 
+                is_filled ? OH_SCALING_MODE_SCALE_CROP_V2 : OH_SCALING_MODE_SCALE_FIT_V2);
+            return VLC_SUCCESS;
+        }
+
         case VOUT_DISPLAY_CHANGE_ZOOM:
         case VOUT_DISPLAY_CHANGE_SOURCE_ASPECT:
         case VOUT_DISPLAY_CHANGE_SOURCE_CROP:
             return VLC_SUCCESS;
 
         case VOUT_DISPLAY_RESET_PICTURES: {
+            msg_Dbg(vd, "Control: VOUT_DISPLAY_RESET_PICTURES to %dx%d", 
+                    vd->cfg->display.width, vd->cfg->display.height);
+            
             vd->fmt.i_width = vd->fmt.i_visible_width = vd->cfg->display.width;
             vd->fmt.i_height = vd->fmt.i_visible_height = vd->cfg->display.height;
+            
             if (vd->sys->window) {
                 OH_NativeWindow_NativeWindowHandleOpt(vd->sys->window, SET_BUFFER_GEOMETRY, vd->fmt.i_width, vd->fmt.i_height);
             }
+            
             return VLC_SUCCESS;
         }
     }

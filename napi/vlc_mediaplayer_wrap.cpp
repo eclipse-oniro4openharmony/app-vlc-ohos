@@ -313,7 +313,6 @@ napi_value MediaPlayerSetPosition(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
-
     double position = 0.0;
     status = napi_get_value_double(env, args[1], &position);
     if (status != napi_ok) {
@@ -326,6 +325,41 @@ napi_value MediaPlayerSetPosition(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
+}
+
+napi_value MediaPlayerGetVideoSize(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) return nullptr;
+
+    if (argc < 1 || args[0] == nullptr) {
+        napi_throw_type_error(env, nullptr, "Expected 1 argument (VlcMediaPlayer)");
+        return nullptr;
+    }
+
+    void* player_ptr = nullptr;
+    status = napi_unwrap(env, args[0], &player_ptr);
+    if (status != napi_ok || player_ptr == nullptr) {
+        napi_throw_type_error(env, nullptr, "Invalid VlcMediaPlayer argument");
+        return nullptr;
+    }
+    libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
+
+    unsigned width = 0, height = 0;
+    libvlc_video_get_size(player, 0, &width, &height);
+
+    napi_value result;
+    napi_create_object(env, &result);
+
+    napi_value w_val, h_val;
+    napi_create_uint32(env, width, &w_val);
+    napi_create_uint32(env, height, &h_val);
+
+    napi_set_named_property(env, result, "width", w_val);
+    napi_set_named_property(env, result, "height", h_val);
+
+    return result;
 }
 
 napi_value MediaPlayerSetNativeWindow(napi_env env, napi_callback_info info) {
@@ -397,6 +431,32 @@ napi_value MediaPlayerSetNativeWindow(napi_env env, napi_callback_info info) {
     } else {
         fprintf(stderr, "MediaPlayerSetNativeWindow: surfaceId is empty, clearing window\n");
         libvlc_media_player_set_nsobject(player, nullptr);
+    }
+
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    return undefined;
+}
+
+napi_value MediaPlayerSetDisplaySize(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3] = {nullptr, nullptr, nullptr};
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) return nullptr;
+
+    if (argc < 3) {
+        napi_throw_type_error(env, nullptr, "Expected 3 arguments (VlcMediaPlayer, width, height)");
+        return nullptr;
+    }
+
+    uint32_t width = 0, height = 0;
+    napi_get_value_uint32(env, args[1], &width);
+    napi_get_value_uint32(env, args[2], &height);
+
+    if (width > 0 && height > 0) {
+        char sizeStr[64];
+        snprintf(sizeStr, sizeof(sizeStr), "%ux%u", width, height);
+        setenv("VLC_OHOS_RESIZE", sizeStr, 1);
     }
 
     napi_value undefined;

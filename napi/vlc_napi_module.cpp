@@ -20,7 +20,8 @@ static napi_value Init(napi_env env, napi_value exports) {
         {"mediaPlayerGetLength",  nullptr, MediaPlayerGetLength,  nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaPlayerGetPosition",nullptr, MediaPlayerGetPosition,nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaPlayerSetPosition",nullptr, MediaPlayerSetPosition,nullptr, nullptr, nullptr, napi_default, nullptr},
-        
+        {"mediaPlayerGetVideoSize",nullptr, MediaPlayerGetVideoSize,nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaPlayerSetDisplaySize",nullptr, MediaPlayerSetDisplaySize,nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaPlayerSetNativeWindow", nullptr, MediaPlayerSetNativeWindow, nullptr, nullptr, nullptr, napi_default, nullptr},
         
         {"mediaPlayerAttachEvent",    nullptr, MediaPlayerAttachEvent,    nullptr, nullptr, nullptr, napi_default, nullptr},

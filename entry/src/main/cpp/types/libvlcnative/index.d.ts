@@ -20,7 +20,8 @@ export function mediaPlayerSetTime(player: VlcMediaPlayer, time: number): void;
 export function mediaPlayerGetLength(player: VlcMediaPlayer): number;
 export function mediaPlayerGetPosition(player: VlcMediaPlayer): number;
 export function mediaPlayerSetPosition(player: VlcMediaPlayer, position: number): void;
-
+export function mediaPlayerGetVideoSize(player: VlcMediaPlayer): { width: number, height: number };
+export function mediaPlayerSetDisplaySize(player: VlcMediaPlayer, width: number, height: number): void;
 export function mediaPlayerSetNativeWindow(player: VlcMediaPlayer, surfaceId: string): void;
 
 export function mediaPlayerAttachEvent(player: VlcMediaPlayer, eventType: number, callback: (event: any) => void): void;

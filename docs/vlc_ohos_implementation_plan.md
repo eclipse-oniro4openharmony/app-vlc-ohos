@@ -614,22 +614,11 @@
 > * **Hardware Rendering Initialization:** Implementing direct EGL/GLES2 rendering path in `ohos_vout.c`. This will leverage GLES2 shaders to upload and display video frames, significantly reducing CPU overhead compared to the software `mmap` path.
 > * **Refinement**: Using direct GLES2 function calls (linked via `libGLESv2.so`) instead of dynamic loading for better reliability.
 
-### 4.5 Implement Scaling Mode Mapping
-- [ ] Map VLC aspect ratio settings to OpenHarmony scaling modes through the NativeWindow metadata API:
-  ```c
-  switch (vlc_aspect_mode) {
-      case VLC_VOUT_CROP:
-          OH_NativeWindow_NativeWindowHandleOpt(window, SET_SCALING_MODE, OH_SCALING_MODE_SCALE_CROP_V2);
-          break;
-      case VLC_VOUT_FIT:
-          OH_NativeWindow_NativeWindowHandleOpt(window, SET_SCALING_MODE, OH_SCALING_MODE_SCALE_FIT_V2);
-          break;
-      case VLC_VOUT_STRETCH:
-          OH_NativeWindow_NativeWindowHandleOpt(window, SET_SCALING_MODE, OH_SCALING_MODE_SCALE_TO_WINDOW_V2);
-          break;
-  }
-  ```
-- **Test:** Toggle aspect ratio in the UI — video display coordinates natively adjust accordingly.
+### 4.5 Implement Scaling Mode Mapping - [X]
+- [x] Mapped VLC's display fill/crop/fit states to OpenHarmony's `SET_SCALING_MODE` (11) operation using `OH_NativeWindow_NativeWindowHandleOpt`.
+- [x] Implemented `VOUT_DISPLAY_RESET_PICTURES` in `Control()` to trigger format re-negotiation and `swscale` re-initialization, ensuring correct aspect ratio without stretching.
+- [x] Fixed video centering and scaling artifacts by querying the actual EGL surface size for the `Viewport` and correcting texture coordinate mapping to ignore buffer padding.
+- **Test:** Toggle aspect ratio in the UI — video display coordinates natively adjust accordingly. Video maintains original aspect ratio on portrait displays with black bars.
 
 ### 4.6 Handle Surface Lifecycle Events & Restarts
 - [ ] The `onSurfaceDestroyed` call from ArkTS sets the surface mapping to `nullptr`. `ohos_vout.c` should routinely check window validity or be signaled to pause processing if the native window goes away.
