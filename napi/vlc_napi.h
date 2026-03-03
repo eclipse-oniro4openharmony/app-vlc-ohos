@@ -29,6 +29,8 @@ napi_value MediaPlayerGetPosition(napi_env env, napi_callback_info info);
 napi_value MediaPlayerSetPosition(napi_env env, napi_callback_info info);
 napi_value MediaPlayerGetVideoSize(napi_env env, napi_callback_info info);
 napi_value MediaPlayerSetDisplaySize(napi_env env, napi_callback_info info);
+napi_value MediaPlayerSetAspectRatio(napi_env env, napi_callback_info info);
+napi_value MediaPlayerSetCrop(napi_env env, napi_callback_info info);
 
 // Video output binding
 napi_value MediaPlayerSetNativeWindow(napi_env env, napi_callback_info info);

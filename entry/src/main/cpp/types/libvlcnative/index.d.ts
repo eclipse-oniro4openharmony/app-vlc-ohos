@@ -23,6 +23,8 @@ export function mediaPlayerSetPosition(player: VlcMediaPlayer, position: number)
 export function mediaPlayerGetVideoSize(player: VlcMediaPlayer): { width: number, height: number };
 export function mediaPlayerSetDisplaySize(player: VlcMediaPlayer, width: number, height: number): void;
 export function mediaPlayerSetNativeWindow(player: VlcMediaPlayer, surfaceId: string): void;
+export function mediaPlayerSetAspectRatio(player: VlcMediaPlayer, aspect: string): void;
+export function mediaPlayerSetCrop(player: VlcMediaPlayer, crop: string): void;
 
 export function mediaPlayerAttachEvent(player: VlcMediaPlayer, eventType: number, callback: (event: any) => void): void;
 export function mediaPlayerDetachEvent(player: VlcMediaPlayer, eventType: number): void;

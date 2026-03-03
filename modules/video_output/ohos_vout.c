@@ -298,27 +298,24 @@ static void Display(vout_display_t *vd, picture_t *picture, subpicture_t *subpic
         return;
     }
 
-    // Check for resize request from environment (passed from NAPI)
-    char *resize_env = getenv("VLC_OHOS_RESIZE");
-    if (resize_env) {
-        unsigned w, h;
-        if (sscanf(resize_env, "%ux%u", &w, &h) == 2) {
-            if (w != sys->width || h != sys->height) {
-                msg_Dbg(vd, "Detected resize request from env: %ux%u", w, h);
-                sys->height = h;
-                vout_display_SendEventDisplaySize(vd, w, h);
-                setenv("VLC_OHOS_RESIZE", "", 1);
-            }
-        }
+    if (!sys->window || !sys->surface) {
+        picture_Release(picture);
+        if (subpicture) subpicture_Delete(subpicture);
+        return;
     }
 
     EGLint surface_width = 0, surface_height = 0;
     eglQuerySurface(sys->display, sys->surface, EGL_WIDTH, &surface_width);
     eglQuerySurface(sys->display, sys->surface, EGL_HEIGHT, &surface_height);
     
-    if (surface_width != vd->fmt.i_width || surface_height != vd->fmt.i_height) {
-        msg_Dbg(vd, "Surface size mismatch: %dx%d vs vd->fmt %dx%d", 
-                surface_width, surface_height, vd->fmt.i_width, vd->fmt.i_height);
+    if (surface_width > 0 && surface_height > 0 && 
+        (surface_width != (int)sys->width || surface_height != (int)sys->height)) {
+        msg_Dbg(vd, "Surface resize detected: %dx%d (was %ux%u)", 
+                surface_width, surface_height, sys->width, sys->height);
+        sys->width = surface_width;
+        sys->height = surface_height;
+        vout_display_SendEventDisplaySize(vd, surface_width, surface_height);
+        // Do NOT send PicturesInvalid here, let the core handle the DisplaySize change
     }
 
     if (!eglMakeCurrent(sys->display, sys->surface, sys->surface, sys->context)) {
@@ -412,6 +409,15 @@ static int Control(vout_display_t *vd, int query, va_list args) {
             
             if (vd->sys->window) {
                 OH_NativeWindow_NativeWindowHandleOpt(vd->sys->window, SET_BUFFER_GEOMETRY, vd->fmt.i_width, vd->fmt.i_height);
+            }
+
+            if (vd->sys->pool) {
+                picture_pool_Release(vd->sys->pool);
+            }
+            vd->sys->pool = picture_pool_NewFromFormat(&vd->fmt, 10);
+            if (!vd->sys->pool) {
+                msg_Err(vd, "Failed to recreate picture pool");
+                return VLC_ENOMEM;
             }
             
             return VLC_SUCCESS;

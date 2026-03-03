@@ -131,6 +131,18 @@ export class VlcService {
     }
   }
 
+  setAspectRatio(aspect: string): void {
+    if (this.player) {
+      vlcnative.mediaPlayerSetAspectRatio(this.player, aspect);
+    }
+  }
+
+  setCrop(crop: string): void {
+    if (this.player) {
+      vlcnative.mediaPlayerSetCrop(this.player, crop);
+    }
+  }
+
   onEvent(eventType: VlcEvent, callback: VlcEventCallback): void {
     if (this.player) {
       vlcnative.mediaPlayerAttachEvent(

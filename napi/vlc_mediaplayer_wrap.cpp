@@ -453,11 +453,77 @@ napi_value MediaPlayerSetDisplaySize(napi_env env, napi_callback_info info) {
     napi_get_value_uint32(env, args[1], &width);
     napi_get_value_uint32(env, args[2], &height);
 
-    if (width > 0 && height > 0) {
-        char sizeStr[64];
-        snprintf(sizeStr, sizeof(sizeStr), "%ux%u", width, height);
-        setenv("VLC_OHOS_RESIZE", sizeStr, 1);
+    // Vout now detects resize automatically via eglQuerySurface in Display()
+    
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    return undefined;
+}
+
+napi_value MediaPlayerSetAspectRatio(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr, nullptr};
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) return nullptr;
+
+    if (argc < 2 || args[0] == nullptr || args[1] == nullptr) {
+        napi_throw_type_error(env, nullptr, "Expected 2 arguments (VlcMediaPlayer, aspect)");
+        return nullptr;
     }
+
+    void* player_ptr = nullptr;
+    status = napi_unwrap(env, args[0], &player_ptr);
+    if (status != napi_ok || player_ptr == nullptr) {
+        napi_throw_type_error(env, nullptr, "Invalid VlcMediaPlayer argument");
+        return nullptr;
+    }
+    libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
+
+    char aspectStr[128] = {0};
+    size_t result_len = 0;
+    status = napi_get_value_string_utf8(env, args[1], aspectStr, sizeof(aspectStr) - 1, &result_len);
+    if (status != napi_ok) {
+        napi_throw_type_error(env, nullptr, "Invalid aspect argument (must be string)");
+        return nullptr;
+    }
+
+    libvlc_video_set_aspect_ratio(player, aspectStr);
+    fprintf(stderr, "MediaPlayerSetAspectRatio: player=%p, aspect=%s\n", player, aspectStr);
+
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    return undefined;
+}
+
+napi_value MediaPlayerSetCrop(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr, nullptr};
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) return nullptr;
+
+    if (argc < 2 || args[0] == nullptr || args[1] == nullptr) {
+        napi_throw_type_error(env, nullptr, "Expected 2 arguments (VlcMediaPlayer, crop)");
+        return nullptr;
+    }
+
+    void* player_ptr = nullptr;
+    status = napi_unwrap(env, args[0], &player_ptr);
+    if (status != napi_ok || player_ptr == nullptr) {
+        napi_throw_type_error(env, nullptr, "Invalid VlcMediaPlayer argument");
+        return nullptr;
+    }
+    libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
+
+    char cropStr[128] = {0};
+    size_t result_len = 0;
+    status = napi_get_value_string_utf8(env, args[1], cropStr, sizeof(cropStr) - 1, &result_len);
+    if (status != napi_ok) {
+        napi_throw_type_error(env, nullptr, "Invalid crop argument (must be string)");
+        return nullptr;
+    }
+
+    libvlc_video_set_crop_geometry(player, cropStr);
+    fprintf(stderr, "MediaPlayerSetCrop: player=%p, crop=%s\n", player, cropStr);
 
     napi_value undefined;
     napi_get_undefined(env, &undefined);

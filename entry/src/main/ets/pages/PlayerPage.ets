@@ -28,12 +28,51 @@ struct PlayerPage {
   @State volume: number = 100;
   @State isControlsVisible: boolean = true;
   @State videoAspectRatio: number = 16 / 9;
+  @State currentAspectRatioMode: number = 0;
+  private aspectModes: string[] = ["Best Fit", "16:9", "4:3", "Fill", "Original"];
 
   private hideTimer: number = -1;
 
+  setNextAspectRatio() {
+    this.currentAspectRatioMode = (this.currentAspectRatioMode + 1) % this.aspectModes.length;
+    const mode = this.aspectModes[this.currentAspectRatioMode];
+
+    // Logic for mapping UI modes to VLC aspect/crop
+    switch (mode) {
+      case "Best Fit":
+        vlcService.setAspectRatio("");
+        vlcService.setCrop("");
+        this.videoAspectRatio = 16 / 9; // Default or calculate from vlc content if possible
+        break;
+      case "16:9":
+        vlcService.setAspectRatio("16:9");
+        vlcService.setCrop("");
+        this.videoAspectRatio = 16 / 9;
+        break;
+      case "4:3":
+        vlcService.setAspectRatio("4:3");
+        vlcService.setCrop("");
+        this.videoAspectRatio = 4 / 3;
+        break;
+      case "Fill":
+        vlcService.setAspectRatio("");
+        vlcService.setCrop("16:9");
+        this.videoAspectRatio = 16 / 9; // Example for fill
+        break;
+      case "Original":
+        vlcService.setAspectRatio("");
+        vlcService.setCrop("");
+        const size = vlcService.getVideoSize();
+        if (size.width > 0 && size.height > 0) {
+          this.videoAspectRatio = size.width / size.height;
+        }
+        break;
+    }
+  }
+
   aboutToAppear(): void {
     // Provide a test video to play
-    const testPath = "/data/storage/el2/base/haps/entry/files/I_am_legend.mp4";
+    const testPath = "/data/storage/el2/base/haps/entry/files/Big_Buck_Bunny.mp4";
     vlcService.loadMedia(testPath);
     vlcService.play();
     this.isPlaying = true;
@@ -253,11 +292,11 @@ struct PlayerPage {
                   this.startHideTimer();
                 })
               Blank()
-              Button("Aspect")
+              Button(`Aspect: ${this.aspectModes[this.currentAspectRatioMode]}`)
                 .fontSize(12)
                 .backgroundColor("#40FFFFFF")
                 .onClick(() => {
-                  // Toggle logic for aspect ratio can be added here
+                  this.setNextAspectRatio();
                   this.startHideTimer();
                 })
             }
