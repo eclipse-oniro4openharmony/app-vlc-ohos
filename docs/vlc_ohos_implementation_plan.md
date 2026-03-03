@@ -596,19 +596,23 @@
 > * **Successful Verification:** Video playback confirmed on device with the test file `Big_Buck_Bunny.mp4`. Output verified via `hilog` and direct visual confirmation.
 
 
-### 4.4 Implement EGL Hardware Rendering Path
-- [ ] In `Open()`, following acquisition of `OHNativeWindow*`:
+### 4.4 Implement EGL Hardware Rendering Path - [x]
+- [x] In `Open()`, following acquisition of `OHNativeWindow*`:
   - Initialize EGL: `eglGetDisplay(EGL_DEFAULT_DISPLAY)`, `eglInitialize()`.
   - Choose an EGL config supporting `EGL_OPENGL_ES2_BIT`.
   - Create EGL context: `eglCreateContext()`.
   - Create EGL surface: `eglCreateWindowSurface(display, config, nativeWindow, NULL)`.
   - Make current: `eglMakeCurrent()`.
-- [ ] Use VLC's existing OpenGL/GLES rendering shaders (from `modules/video_output/opengl/`) to render `picture_t` textures to the EGL surface.
-- [ ] In `Display()`:
+- [x] Use VLC's existing OpenGL/GLES rendering shaders (from `modules/video_output/opengl/`) to render `picture_t` textures to the EGL surface.
+- [x] In `Display()`:
   - Upload the decoded frame to a GL texture.
   - Render the quad via the OpenGL pipeline.
   - `eglSwapBuffers()`.
 - **Test:** Play an H.264 video — smooth rendering with proper colors via the hardware-accelerated GL path.
+
+> **Important Implementation Notes (Status):**
+> * **Hardware Rendering Initialization:** Implementing direct EGL/GLES2 rendering path in `ohos_vout.c`. This will leverage GLES2 shaders to upload and display video frames, significantly reducing CPU overhead compared to the software `mmap` path.
+> * **Refinement**: Using direct GLES2 function calls (linked via `libGLESv2.so`) instead of dynamic loading for better reliability.
 
 ### 4.5 Implement Scaling Mode Mapping
 - [ ] Map VLC aspect ratio settings to OpenHarmony scaling modes through the NativeWindow metadata API:

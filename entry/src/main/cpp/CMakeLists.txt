@@ -50,6 +50,8 @@ target_link_directories(ohos_vout_plugin PRIVATE
 target_link_libraries(ohos_vout_plugin
     vlccore
     libnative_window.so
+    libEGL.so
+    libGLESv2.so
 )
 
 add_library(ohos_aout_plugin SHARED
