@@ -52,7 +52,7 @@ struct Index {
         .height("100%")
         .backgroundColor("#1A1A1A")
       Column() {
-        Image($r("app.media.startIcon"))
+        Image($r("app.media.app_icon"))
           .width(120)
           .height(120)
           .margin({ bottom: 40 })

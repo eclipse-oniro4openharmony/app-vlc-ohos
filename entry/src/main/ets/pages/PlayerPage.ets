@@ -193,7 +193,7 @@ struct PlayerPage {
         Column() {
           // Top Bar (Optional: Title/Back)
           Row() {
-            Image($r("app.media.startIcon"))
+            Image($r("app.media.app_icon"))
               // Placeholder for back icon
               .width(24)
               .height(24)
