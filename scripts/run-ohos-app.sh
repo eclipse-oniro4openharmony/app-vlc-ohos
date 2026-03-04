@@ -29,12 +29,12 @@ cp -rL "$SCRIPT_DIR/../vlc_install/lib/vlc/plugins"/*/* "$SCRIPT_DIR/../entry/li
 hvigorw assembleHap --mode module -p product=default -p module=entry -p buildMode=debug --stacktrace --no-parallel --no-daemon || { echo "Build failed"; exit 1; }
 
 # Install and Clear Logs
+echo "Installing the app..."
 hdc install entry/build/default/outputs/default/entry-default-signed.hap
-hdc shell mkdir -p /data/app/el2/100/base/org.oniroproject.vlc/haps/entry/files/
-hdc file send "$SCRIPT_DIR/Big_Buck_Bunny.mp4" /data/app/el2/100/base/org.oniroproject.vlc/haps/entry/files/Big_Buck_Bunny.mp4
-hdc shell chmod 777 /data/app/el2/100/base/org.oniroproject.vlc/haps/entry/files/Big_Buck_Bunny.mp4
 hdc shell hilog -r
 hdc shell aa start -a EntryAbility -b "$BUNDLE_ID"
+
+echo "Starting the app..."
 
 # Give the app a moment to spin up
 sleep 1 
@@ -48,6 +48,7 @@ if [ -z "$pid" ]; then
 fi
 
 echo "App running PID: $pid"
+echo "Streaming logs..."
 
 # Execute Log Stream
 if [ -n "$GREP_FILTER" ]; then
