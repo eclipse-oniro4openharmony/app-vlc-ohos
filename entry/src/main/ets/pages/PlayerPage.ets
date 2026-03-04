@@ -1,5 +1,6 @@
 import { vlcService, VlcEvent, VlcEventData } from "../services/VlcService";
 import vlcnative from "libvlcnative.so";
+import { router } from "@kit.ArkUI";
 
 class VlcXComponentController extends XComponentController {
   onSurfaceCreated(surfaceId: string): void {
@@ -71,9 +72,15 @@ struct PlayerPage {
   }
 
   aboutToAppear(): void {
-    // Provide a test video to play
+    // Retrieve URI from router params
+    const params = router.getParams() as Record<string, string>;
+    const videoUri = params?.videoUri;
+
+    // Provide a test video to play as fallback
     const testPath = "/data/storage/el2/base/haps/entry/files/Big_Buck_Bunny.mp4";
-    vlcService.loadMedia(testPath);
+    const pathToPlay = videoUri || testPath;
+
+    vlcService.loadMedia(pathToPlay);
     vlcService.play();
     this.isPlaying = true;
 

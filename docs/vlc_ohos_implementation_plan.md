@@ -927,10 +927,21 @@
 > * **Control Features:** Implemented play/pause toggle, seeking via a VLC-orange styled slider, time formatting (MM:SS), and an auto-hide mechanism for controls (5-second timeout).
 > * **ArkTS Compatibility:** Resolved lint errors by using `enum` for event types and renaming reserved property names like `position` to `playbackPosition`.
 
-### 7.3 Implement File Picker Integration
-- [ ] Use OpenHarmony's `DocumentViewPicker` or `FilePicker` to let users select media files.
-- [ ] Pass the selected file URI to `VlcService.loadMedia()`.
-- **Test:** Select a local MP4 file via picker — playback begins.
+### 7.3 Implement File Picker Integration - [X]
+- [X] Create a new starter page (e.g., update `Index.ets` or create `StartPage.ets`) as the main entry point of the app, rather than opening `PlayerPage` directly.
+- [X] Add a button on the starter page to trigger the file picker.
+- [X] Use OpenHarmony's `@kit.CoreFileKit` to instantiate a `picker.DocumentViewPicker` using the UI ability context (`this.getUIContext().getHostContext() as common.UIAbilityContext`).
+- [X] Call `documentPicker.select(documentSelectOptions)` to let the user select a media file, obtaining the file URI from the promise result.
+- [X] Upon successful selection, navigate to `PlayerPage` (using `@kit.ArkUI` router or Navigation component), passing the selected file URI as a routing parameter.
+- [X] Update `PlayerPage.ets` to extract the URI parameter on load and pass it to `VlcService.loadMedia(uri)`.
+- [X] Update the application entry point (e.g., `EntryAbility.ets` and `main_pages.json`) to load the starter page first instead of `PlayerPage`.
+- **Test:** Launch the app → Starter page is shown → Click Open File button → Picker appears → Select a local MP4 file → App navigates to `PlayerPage` → Playback begins.
+
+> **Important Implementation Notes (Status):**
+> * **Starter Page:** Updated `Index.ets` to act as the main entry point with a "Open File" button and VLC branding.
+> * **File Picker:** Integrated `DocumentViewPicker` to browse and select video files from the device storage.
+> * **Navigation:** Used `router.pushUrl` to pass the selected `videoUri` to `PlayerPage.ets`.
+> * **Player Integration:** `PlayerPage.ets` was updated to read the URI from the router and load it using `VlcService`.
 
 ### 7.4 Implement Network Stream Support
 - [ ] Add a URL input dialog.
