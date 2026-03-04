@@ -29,3 +29,4 @@ export function mediaPlayerSetCrop(player: VlcMediaPlayer, crop: string): void;
 
 export function mediaPlayerAttachEvent(player: VlcMediaPlayer, eventType: number, callback: (event: any) => void): void;
 export function mediaPlayerDetachEvent(player: VlcMediaPlayer, eventType: number): void;
+export const mediaPlayerCleanup: (player: any, media: any, instance: any) => void;

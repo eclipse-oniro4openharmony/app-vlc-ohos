@@ -2,6 +2,7 @@
 #include <vlc/vlc.h>
 #include <string>
 #include <mutex>
+#include <thread> // Added as per instruction
 #include <unordered_map>
 #include <native_window/external_window.h>
 
@@ -20,12 +21,17 @@ extern "C" __attribute__((visibility("default"))) OHNativeWindow* GetOHNativeWin
 static void MediaPlayerFinalizer(napi_env env, void* finalize_data, void* finalize_hint) {
     libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(finalize_data);
     if (player != nullptr) {
+        fprintf(stderr, "MediaPlayerFinalizer: releasing player %p\n", player);
         MediaPlayerDetachAllEvents(player);
         libvlc_media_player_release(player);
 
         std::lock_guard<std::mutex> lock(g_windowRegistryMutex);
         auto it = g_windowRegistry.find(player);
         if (it != g_windowRegistry.end()) {
+            fprintf(stderr, "MediaPlayerSetNativeWindow: detaching existing window %p\n", it->second);
+            // CRITICAL: Notify libVLC first that the window is going away
+            libvlc_media_player_set_nsobject(player, nullptr);
+            
             if (it->second != nullptr) {
                 OH_NativeWindow_DestroyNativeWindow(it->second);
             }
@@ -176,8 +182,9 @@ napi_value MediaPlayerStop(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
-
+    fprintf(stderr, "MediaPlayerStop: player=%p\n", player);
     libvlc_media_player_stop(player);
+    fprintf(stderr, "MediaPlayerStop: player=%p completed\n", player);
 
     napi_value undefined;
     napi_get_undefined(env, &undefined);
@@ -529,3 +536,107 @@ napi_value MediaPlayerSetCrop(napi_env env, napi_callback_info info) {
     napi_get_undefined(env, &undefined);
     return undefined;
 }
+
+napi_value MediaPlayerCleanup(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    void* player_ptr = nullptr;
+    void* media_ptr = nullptr;
+    void* instance_ptr = nullptr;
+
+    if (argc >= 1 && args[0] != nullptr) {
+        napi_valuetype valuetype;
+        napi_typeof(env, args[0], &valuetype);
+        if (valuetype == napi_object) {
+            napi_unwrap(env, args[0], &player_ptr);
+        }
+    }
+    
+    if (argc >= 2 && args[1] != nullptr) {
+        napi_valuetype valuetype;
+        napi_typeof(env, args[1], &valuetype);
+        if (valuetype == napi_object) {
+            napi_unwrap(env, args[1], &media_ptr);
+        }
+    }
+    
+    if (argc >= 3 && args[2] != nullptr) {
+        napi_valuetype valuetype;
+        napi_typeof(env, args[2], &valuetype);
+        if (valuetype == napi_object) {
+            napi_unwrap(env, args[2], &instance_ptr);
+        }
+    }
+
+    if (player_ptr) {
+        fprintf(stderr, "MediaPlayerCleanup: extracting player %p from JS\n", player_ptr);
+    } else {
+        fprintf(stderr, "MediaPlayerCleanup: failed to extract player from JS\n");
+    }
+
+    // Launch background thread for blocking operations
+    std::thread([player_ptr, media_ptr, instance_ptr]() {
+        fprintf(stderr, "MediaPlayerCleanup: background thread started for player=%p\n", player_ptr);
+        
+        if (player_ptr) {
+            libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
+            
+            // 1. Detach all events
+            MediaPlayerDetachAllEvents(player);
+            
+            // 2. Detach native window to stop rendering attempts immediately
+            {
+                std::lock_guard<std::mutex> lock(g_windowRegistryMutex);
+                auto it = g_windowRegistry.find(player);
+                if (it != g_windowRegistry.end()) {
+                    fprintf(stderr, "MediaPlayerCleanup: detaching surface from player %p\n", player);
+                    libvlc_media_player_set_nsobject(player, nullptr);
+                    if (it->second != nullptr) {
+                        OH_NativeWindow_DestroyNativeWindow(it->second);
+                    }
+                    g_windowRegistry.erase(it);
+                }
+            }
+
+            // 3. Stop player (this might block)
+            fprintf(stderr, "MediaPlayerCleanup: calling libvlc_media_player_stop(%p)...\n", player);
+            libvlc_media_player_stop(player);
+            fprintf(stderr, "MediaPlayerCleanup: libvlc_media_player_stop(%p) done\n", player);
+
+            // 4. Finally release player
+            libvlc_media_player_release(player);
+            fprintf(stderr, "MediaPlayerCleanup: player %p released\n", player);
+        }
+
+        if (media_ptr) {
+            libvlc_media_t* media = static_cast<libvlc_media_t*>(media_ptr);
+            libvlc_media_release(media);
+            fprintf(stderr, "MediaPlayerCleanup: media %p released\n", media_ptr);
+        }
+
+        if (instance_ptr) {
+            libvlc_instance_t* instance = static_cast<libvlc_instance_t*>(instance_ptr);
+            libvlc_release(instance);
+            fprintf(stderr, "MediaPlayerCleanup: instance %p released\n", instance_ptr);
+        }
+        
+        fprintf(stderr, "MediaPlayerCleanup: background thread finished\n");
+    }).detach();
+
+    if (argc >= 1 && args[0] != nullptr) {
+        napi_remove_wrap(env, args[0], nullptr);
+    }
+    if (argc >= 2 && args[1] != nullptr) {
+        napi_remove_wrap(env, args[1], nullptr);
+    }
+    if (argc >= 3 && args[2] != nullptr) {
+        napi_remove_wrap(env, args[2], nullptr);
+    }
+
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    return undefined;
+}
+

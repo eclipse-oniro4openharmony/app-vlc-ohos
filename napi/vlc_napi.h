@@ -23,6 +23,7 @@ napi_value MediaPlayerSetMedia(napi_env env, napi_callback_info info);
 napi_value MediaPlayerPlay(napi_env env, napi_callback_info info);
 napi_value MediaPlayerPause(napi_env env, napi_callback_info info);
 napi_value MediaPlayerStop(napi_env env, napi_callback_info info);
+napi_value MediaPlayerCleanup(napi_env env, napi_callback_info info);
 napi_value MediaPlayerGetTime(napi_env env, napi_callback_info info);
 napi_value MediaPlayerSetTime(napi_env env, napi_callback_info info);
 napi_value MediaPlayerGetLength(napi_env env, napi_callback_info info);

@@ -943,6 +943,7 @@
 > * **Navigation:** Used `router.pushUrl` to pass the selected `videoUri` to `PlayerPage.ets`.
 > * **Player Integration:** `PlayerPage.ets` was updated to read the URI from the router. 
 > * **File Descriptor Fix:** Resolved the issue where URIs from the file picker were not playing by implementing `libvlc_media_new_from_fd` in the NAPI layer. Selected URIs are now opened via OpenHarmony's `fs` module, and their file descriptors are passed directly to libVLC. This avoids URI encoding issues and ensures reliable access to picked files.
+> * **Robust App Shutdown/Navigation:** Fixed a critical deadlock that hung the app when pressing the back button to return to the starter page. The native `libvlc_media_player_stop` call was blocking the main UI thread while waiting on the EGL video output thread, which in turn was blocked waiting for the UI thread. This was resolved by implementing an **Async Cleanup** mechanism (`MediaPlayerCleanup`) in the NAPI layer using a background `std::thread`, combined with correctly using `napi_unwrap` to extract the native pointers. We also implemented `ensureInitialized()` in `VlcService` to ensure the player correctly reconstructs its instance for subsequent playbacks after a cleanup.
 
 ### 7.4 Implement Network Stream Support
 - [ ] Add a URL input dialog.

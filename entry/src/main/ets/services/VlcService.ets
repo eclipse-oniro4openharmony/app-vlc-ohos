@@ -37,18 +37,25 @@ export class VlcService {
   private media: vlcnative.VlcMedia | undefined = undefined;
 
   constructor() {
-    const args: string[] = [
-      "--verbose=2",
-      "--plugin-path=/data/storage/el1/bundle/libs/arm64",
-      "--vout=OHOSVout",
-      "--aout=OHOSAout",
-      "--no-xlib",
-    ];
-    this.instance = vlcnative.vlcNew(args);
-    this.player = vlcnative.mediaPlayerNew(this.instance);
+    this.ensureInitialized();
+  }
+
+  private ensureInitialized(): void {
+    if (!this.instance || !this.player) {
+      const args: string[] = [
+        "--verbose=2",
+        "--plugin-path=/data/storage/el1/bundle/libs/arm64",
+        "--vout=OHOSVout",
+        "--aout=OHOSAout",
+        "--no-xlib",
+      ];
+      this.instance = vlcnative.vlcNew(args);
+      this.player = vlcnative.mediaPlayerNew(this.instance);
+    }
   }
 
   loadMedia(path: string): void {
+    this.ensureInitialized();
     if (!this.instance || !this.player) return;
 
     if (this.media) {
@@ -60,6 +67,7 @@ export class VlcService {
   }
 
   loadMediaFd(fd: number): void {
+    this.ensureInitialized();
     if (!this.instance || !this.player) return;
 
     if (this.media) {
@@ -71,6 +79,7 @@ export class VlcService {
   }
 
   loadLocation(url: string): void {
+    this.ensureInitialized();
     if (!this.instance || !this.player) return;
 
     if (this.media) {
@@ -171,16 +180,12 @@ export class VlcService {
   }
 
   destroy(): void {
-    if (this.player) {
-      vlcnative.mediaPlayerStop(this.player);
+    if (this.player || this.media || this.instance) {
+      // Async cleanup handles pause, stop, and release in the background
+      vlcnative.mediaPlayerCleanup(this.player, this.media, this.instance);
+
       this.player = undefined;
-    }
-    if (this.media) {
-      vlcnative.mediaRelease(this.media);
       this.media = undefined;
-    }
-    if (this.instance) {
-      vlcnative.vlcRelease(this.instance);
       this.instance = undefined;
     }
   }

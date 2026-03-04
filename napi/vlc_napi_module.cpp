@@ -29,6 +29,7 @@ static napi_value Init(napi_env env, napi_value exports) {
         
         {"mediaPlayerAttachEvent",    nullptr, MediaPlayerAttachEvent,    nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaPlayerDetachEvent",    nullptr, MediaPlayerDetachEvent,    nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaPlayerCleanup",        nullptr, MediaPlayerCleanup,        nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);

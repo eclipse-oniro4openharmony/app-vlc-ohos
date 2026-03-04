@@ -132,7 +132,16 @@ struct PlayerPage {
     this.startHideTimer();
   }
 
+  onBackPress(): boolean | void {
+    vlcService.destroy();
+    if (this.hideTimer !== -1) {
+      clearTimeout(this.hideTimer);
+      this.hideTimer = -1;
+    }
+  }
+
   aboutToDisappear(): void {
+    // Calling destroy again is safe (it checks if this.player exists)
     vlcService.destroy();
     if (this.hideTimer !== -1) {
       clearTimeout(this.hideTimer);
