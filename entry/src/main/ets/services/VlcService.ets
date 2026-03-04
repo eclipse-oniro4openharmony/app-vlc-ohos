@@ -59,6 +59,17 @@ export class VlcService {
     vlcnative.mediaPlayerSetMedia(this.player, this.media);
   }
 
+  loadMediaFd(fd: number): void {
+    if (!this.instance || !this.player) return;
+
+    if (this.media) {
+      vlcnative.mediaRelease(this.media);
+    }
+
+    this.media = vlcnative.mediaNewFd(this.instance, fd);
+    vlcnative.mediaPlayerSetMedia(this.player, this.media);
+  }
+
   loadLocation(url: string): void {
     if (!this.instance || !this.player) return;
 

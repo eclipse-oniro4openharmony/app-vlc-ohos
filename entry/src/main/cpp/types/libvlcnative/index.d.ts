@@ -7,6 +7,7 @@ export function vlcRelease(instance: VlcInstance): void;
 
 export function mediaNewPath(instance: VlcInstance, path: string): VlcMedia;
 export function mediaNewLocation(instance: VlcInstance, url: string): VlcMedia;
+export function mediaNewFd(instance: VlcInstance, fd: number): VlcMedia;
 export function mediaRelease(media: VlcMedia): void;
 
 export function mediaPlayerNew(instance: VlcInstance): VlcMediaPlayer;

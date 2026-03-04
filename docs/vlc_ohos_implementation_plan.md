@@ -941,7 +941,8 @@
 > * **Starter Page:** Updated `Index.ets` to act as the main entry point with a "Open File" button and VLC branding.
 > * **File Picker:** Integrated `DocumentViewPicker` to browse and select video files from the device storage.
 > * **Navigation:** Used `router.pushUrl` to pass the selected `videoUri` to `PlayerPage.ets`.
-> * **Player Integration:** `PlayerPage.ets` was updated to read the URI from the router and load it using `VlcService`.
+> * **Player Integration:** `PlayerPage.ets` was updated to read the URI from the router. 
+> * **File Descriptor Fix:** Resolved the issue where URIs from the file picker were not playing by implementing `libvlc_media_new_from_fd` in the NAPI layer. Selected URIs are now opened via OpenHarmony's `fs` module, and their file descriptors are passed directly to libVLC. This avoids URI encoding issues and ensures reliable access to picked files.
 
 ### 7.4 Implement Network Stream Support
 - [ ] Add a URL input dialog.

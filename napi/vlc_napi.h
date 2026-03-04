@@ -14,6 +14,7 @@ napi_value VlcRelease(napi_env env, napi_callback_info info);
 // Media
 napi_value MediaNewPath(napi_env env, napi_callback_info info);
 napi_value MediaNewLocation(napi_env env, napi_callback_info info);
+napi_value MediaNewFd(napi_env env, napi_callback_info info);
 napi_value MediaRelease(napi_env env, napi_callback_info info);
 
 // Media Player

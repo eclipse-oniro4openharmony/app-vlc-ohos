@@ -107,6 +107,51 @@ napi_value MediaNewLocation(napi_env env, napi_callback_info info) {
     return obj;
 }
 
+napi_value MediaNewFd(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr, nullptr};
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) return nullptr;
+
+    if (argc < 2 || args[0] == nullptr || args[1] == nullptr) {
+        napi_throw_type_error(env, nullptr, "Expected 2 arguments (VlcInstance wrapper, fd number)");
+        return nullptr;
+    }
+
+    void* instance_ptr = nullptr;
+    status = napi_unwrap(env, args[0], &instance_ptr);
+    if (status != napi_ok || instance_ptr == nullptr) {
+        napi_throw_type_error(env, nullptr, "Invalid VlcInstance argument");
+        return nullptr;
+    }
+    libvlc_instance_t* instance = static_cast<libvlc_instance_t*>(instance_ptr);
+
+    int fd;
+    status = napi_get_value_int32(env, args[1], &fd);
+    if (status != napi_ok) {
+        napi_throw_type_error(env, nullptr, "Invalid fd argument");
+        return nullptr;
+    }
+
+    libvlc_media_t* media = libvlc_media_new_fd(instance, fd);
+    if (!media) {
+        napi_throw_error(env, nullptr, "Failed to create libvlc_media_t from fd");
+        return nullptr;
+    }
+
+    napi_value obj;
+    napi_create_object(env, &obj);
+    
+    status = napi_wrap(env, obj, media, MediaFinalizer, nullptr, nullptr);
+    if (status != napi_ok) {
+        libvlc_media_release(media);
+        napi_throw_error(env, nullptr, "Failed to wrap libvlc_media_t");
+        return nullptr;
+    }
+
+    return obj;
+}
+
 napi_value MediaRelease(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1] = {nullptr};

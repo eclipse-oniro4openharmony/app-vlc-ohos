@@ -7,6 +7,7 @@ static napi_value Init(napi_env env, napi_value exports) {
         
         {"mediaNewPath",          nullptr, MediaNewPath,          nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaNewLocation",      nullptr, MediaNewLocation,      nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaNewFd",            nullptr, MediaNewFd,            nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaRelease",          nullptr, MediaRelease,          nullptr, nullptr, nullptr, napi_default, nullptr},
         
         {"mediaPlayerNew",        nullptr, MediaPlayerNew,        nullptr, nullptr, nullptr, napi_default, nullptr},

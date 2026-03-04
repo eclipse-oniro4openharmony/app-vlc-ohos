@@ -1,6 +1,7 @@
 import { vlcService, VlcEvent, VlcEventData } from "../services/VlcService";
 import vlcnative from "libvlcnative.so";
 import { router } from "@kit.ArkUI";
+import { fileIo as fs } from "@kit.CoreFileKit";
 
 class VlcXComponentController extends XComponentController {
   onSurfaceCreated(surfaceId: string): void {
@@ -80,7 +81,20 @@ struct PlayerPage {
     const testPath = "/data/storage/el2/base/haps/entry/files/Big_Buck_Bunny.mp4";
     const pathToPlay = videoUri || testPath;
 
-    vlcService.loadMedia(pathToPlay);
+    if (pathToPlay.startsWith("file://") || pathToPlay.startsWith("datashare://")) {
+      try {
+        const file = fs.openSync(pathToPlay, fs.OpenMode.READ_ONLY);
+        vlcService.loadMediaFd(file.fd);
+      } catch (e) {
+        const error = e as Error;
+        console.error(`Failed to open file: ${pathToPlay}`, error.message);
+        // Fallback to path if openSync fails (might happen for some URIs)
+        vlcService.loadMedia(pathToPlay);
+      }
+    } else {
+      vlcService.loadMedia(pathToPlay);
+    }
+
     vlcService.play();
     this.isPlaying = true;
 
