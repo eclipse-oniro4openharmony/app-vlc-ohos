@@ -56,8 +56,8 @@ struct PlayerPage {
         break;
       case "Fill":
         vlcService.setAspectRatio("");
-        vlcService.setCrop("16:9");
-        this.videoAspectRatio = 16 / 9; // Example for fill
+        vlcService.setCrop("");
+        this.videoAspectRatio = 0; // 0 removes the aspect ratio constraint for full stretch
         break;
       case "Original":
         vlcService.setAspectRatio("");
@@ -150,7 +150,8 @@ struct PlayerPage {
         controller: this.xComponentController,
       })
         .width("100%")
-        .aspectRatio(this.videoAspectRatio)
+        .height(this.videoAspectRatio === 0 ? "100%" : "auto")
+        .aspectRatio(this.videoAspectRatio === 0 ? 0 : this.videoAspectRatio)
         .backgroundColor(Color.Black)
         .align(Alignment.Center)
         .onClick(() => {

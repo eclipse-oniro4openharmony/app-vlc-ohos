@@ -624,6 +624,7 @@
 > **Important Implementation Notes (Status):**
 > * **NAPI Updates:** Added `mediaPlayerSetAspectRatio` and `mediaPlayerSetCrop` to the NAPI layer, wrapping standard libVLC APIs.
 > * **UI Implementation:** Added an `Aspect` button in `PlayerPage.ets` that cycles through common modes (Best Fit, 16:9, 4:3, Fill, Original) and updates both the VLC engine and the `XComponent` state for immediate visual feedback.
+> * **Aspect Ratio Fill:** Fixed issue where the "Fill" mode didn't stretch vertically on portrait screens by setting the `XComponent`'s `height` to `"auto"` and removing its `aspectRatio` constraint whenever "Fill" mode is active.
 
 ### 4.6 Handle Surface Lifecycle Events & Restarts
 - [ ] The `onSurfaceDestroyed` call from ArkTS sets the surface mapping to `nullptr`. `ohos_vout.c` should routinely check window validity or be signaled to pause processing if the native window goes away.
