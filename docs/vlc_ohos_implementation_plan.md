@@ -943,7 +943,11 @@
 > * **Navigation:** Used `router.pushUrl` to pass the selected `videoUri` to `PlayerPage.ets`.
 > * **Player Integration:** `PlayerPage.ets` was updated to read the URI from the router. 
 > * **File Descriptor Fix:** Resolved the issue where URIs from the file picker were not playing by implementing `libvlc_media_new_from_fd` in the NAPI layer. Selected URIs are now opened via OpenHarmony's `fs` module, and their file descriptors are passed directly to libVLC. This avoids URI encoding issues and ensures reliable access to picked files.
-> * **Robust App Shutdown/Navigation:** Fixed a critical deadlock that hung the app when pressing the back button to return to the starter page. The native `libvlc_media_player_stop` call was blocking the main UI thread while waiting on the EGL video output thread, which in turn was blocked waiting for the UI thread. This was resolved by implementing an **Async Cleanup** mechanism (`MediaPlayerCleanup`) in the NAPI layer using a background `std::thread`, combined with correctly using `napi_unwrap` to extract the native pointers. We also implemented `ensureInitialized()` in `VlcService` to ensure the player correctly reconstructs its instance for subsequent playbacks after a cleanup.
+> * **Robust App Shutdown/Navigation & Segfault Fixes:** Addressed severe stability issues and hung states when navigating between the file picker and player:
+>   * **Async Cleanup:** Fixed UI deadlocks by moving blocking `libvlc_media_player_stop` calls to a background `std::thread` in the NAPI layer (`MediaPlayerCleanup`).
+>   * **Race Condition Fix (OHNativeWindow):** Resolved a SIGSEGV during video switching by ensuring `OH_NativeWindow_DestroyNativeWindow` is invoked only *after* the background `stop` command returns, preventing VLC from rendering to a destroyed surface.
+>   * **Double-Free Resolution:** Eliminated memory corruption crashes by removing manual `napi_remove_wrap` calls in the cleanup function, allowing the ArkTS Garbage Collector to manage object finalization safely.
+>   * **VLC Instance Lifecycle:** Fixed a crash in `vlc_vaLog` by updating `VlcService.ets` to reuse the same global `libvlc_instance_t`. This prevents the instance from being garbage-collected while background threads are still active.
 
 ### 7.4 Implement Network Stream Support
 - [ ] Add a URL input dialog.

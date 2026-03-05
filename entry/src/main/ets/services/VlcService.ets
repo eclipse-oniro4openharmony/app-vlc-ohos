@@ -41,7 +41,7 @@ export class VlcService {
   }
 
   private ensureInitialized(): void {
-    if (!this.instance || !this.player) {
+    if (!this.instance) {
       const args: string[] = [
         "--verbose=2",
         "--plugin-path=/data/storage/el1/bundle/libs/arm64",
@@ -50,6 +50,8 @@ export class VlcService {
         "--no-xlib",
       ];
       this.instance = vlcnative.vlcNew(args);
+    }
+    if (!this.player) {
       this.player = vlcnative.mediaPlayerNew(this.instance);
     }
   }
@@ -180,13 +182,14 @@ export class VlcService {
   }
 
   destroy(): void {
-    if (this.player || this.media || this.instance) {
-      // Async cleanup handles pause, stop, and release in the background
-      vlcnative.mediaPlayerCleanup(this.player, this.media, this.instance);
+    if (this.player || this.media) {
+      // Async cleanup handles stop and release of player and media in the background.
+      // We explicitly pass 'undefined' for the instance to keep it alive.
+      vlcnative.mediaPlayerCleanup(this.player, this.media, undefined);
 
       this.player = undefined;
       this.media = undefined;
-      this.instance = undefined;
+      // this.instance persists
     }
   }
 

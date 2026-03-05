@@ -576,36 +576,56 @@ napi_value MediaPlayerCleanup(napi_env env, napi_callback_info info) {
         fprintf(stderr, "MediaPlayerCleanup: failed to extract player from JS\n");
     }
 
+    if (!player_ptr && !media_ptr && !instance_ptr) {
+        fprintf(stderr, "MediaPlayerCleanup: nothing to clean up\n");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
+    OHNativeWindow* nativeWindowToDestroy = nullptr;
+
+    if (player_ptr) {
+        libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
+
+        // 1. Detach all events synchronously on the main thread
+        MediaPlayerDetachAllEvents(player);
+
+        // 2. Detach native window to stop rendering attempts immediately
+        {
+            std::lock_guard<std::mutex> lock(g_windowRegistryMutex);
+            auto it = g_windowRegistry.find(player);
+            if (it != g_windowRegistry.end()) {
+                fprintf(stderr, "MediaPlayerCleanup: detaching surface from player %p\n", player);
+                libvlc_media_player_set_nsobject(player, nullptr);
+                
+                // Save the window pointer to be destroyed later in the thread
+                nativeWindowToDestroy = it->second;
+                
+                g_windowRegistry.erase(it);
+            }
+        }
+    }
+
     // Launch background thread for blocking operations
-    std::thread([player_ptr, media_ptr, instance_ptr]() {
+    std::thread([player_ptr, media_ptr, instance_ptr, nativeWindowToDestroy]() {
         fprintf(stderr, "MediaPlayerCleanup: background thread started for player=%p\n", player_ptr);
         
         if (player_ptr) {
             libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
             
-            // 1. Detach all events
-            MediaPlayerDetachAllEvents(player);
-            
-            // 2. Detach native window to stop rendering attempts immediately
-            {
-                std::lock_guard<std::mutex> lock(g_windowRegistryMutex);
-                auto it = g_windowRegistry.find(player);
-                if (it != g_windowRegistry.end()) {
-                    fprintf(stderr, "MediaPlayerCleanup: detaching surface from player %p\n", player);
-                    libvlc_media_player_set_nsobject(player, nullptr);
-                    if (it->second != nullptr) {
-                        OH_NativeWindow_DestroyNativeWindow(it->second);
-                    }
-                    g_windowRegistry.erase(it);
-                }
-            }
-
             // 3. Stop player (this might block)
             fprintf(stderr, "MediaPlayerCleanup: calling libvlc_media_player_stop(%p)...\n", player);
             libvlc_media_player_stop(player);
             fprintf(stderr, "MediaPlayerCleanup: libvlc_media_player_stop(%p) done\n", player);
 
-            // 4. Finally release player
+            // 4. Safely destroy the native window NOW that the player is stopped
+            if (nativeWindowToDestroy != nullptr) {
+                fprintf(stderr, "MediaPlayerCleanup: destroying OHNativeWindow %p\n", nativeWindowToDestroy);
+                OH_NativeWindow_DestroyNativeWindow(nativeWindowToDestroy);
+            }
+
+            // 5. Finally release player
             libvlc_media_player_release(player);
             fprintf(stderr, "MediaPlayerCleanup: player %p released\n", player);
         }
@@ -625,15 +645,8 @@ napi_value MediaPlayerCleanup(napi_env env, napi_callback_info info) {
         fprintf(stderr, "MediaPlayerCleanup: background thread finished\n");
     }).detach();
 
-    if (argc >= 1 && args[0] != nullptr) {
-        napi_remove_wrap(env, args[0], nullptr);
-    }
-    if (argc >= 2 && args[1] != nullptr) {
-        napi_remove_wrap(env, args[1], nullptr);
-    }
-    if (argc >= 3 && args[2] != nullptr) {
-        napi_remove_wrap(env, args[2], nullptr);
-    }
+    // Removed napi_remove_wrap to allow the GC to naturally invoke
+    // MediaPlayerFinalizer when the JS object is genuinely unreferenced.
 
     napi_value undefined;
     napi_get_undefined(env, &undefined);
