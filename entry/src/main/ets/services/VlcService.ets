@@ -98,10 +98,23 @@ export class VlcService {
     }
   }
 
+  setPause(doPause: boolean): void {
+    if (this.player) {
+      vlcnative.mediaPlayerSetPause(this.player, doPause);
+    }
+  }
+
   pause(): void {
     if (this.player) {
       vlcnative.mediaPlayerPause(this.player);
     }
+  }
+
+  isPlaying(): boolean {
+    if (this.player) {
+      return vlcnative.mediaPlayerIsPlaying(this.player);
+    }
+    return false;
   }
 
   stop(): void {

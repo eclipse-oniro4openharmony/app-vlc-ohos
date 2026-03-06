@@ -132,7 +132,40 @@ napi_value MediaPlayerPlay(napi_env env, napi_callback_info info) {
     libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
 
     libvlc_media_player_play(player);
-
+ 
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    return undefined;
+}
+ 
+napi_value MediaPlayerSetPause(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr, nullptr};
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) return nullptr;
+ 
+    if (argc < 2 || args[0] == nullptr || args[1] == nullptr) {
+        napi_throw_type_error(env, nullptr, "Expected 2 arguments (VlcMediaPlayer, doPause)");
+        return nullptr;
+    }
+ 
+    void* player_ptr = nullptr;
+    status = napi_unwrap(env, args[0], &player_ptr);
+    if (status != napi_ok || player_ptr == nullptr) {
+        napi_throw_type_error(env, nullptr, "Invalid VlcMediaPlayer argument");
+        return nullptr;
+    }
+    libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
+ 
+    bool do_pause = false;
+    status = napi_get_value_bool(env, args[1], &do_pause);
+    if (status != napi_ok) {
+        napi_throw_type_error(env, nullptr, "Invalid doPause argument (must be boolean)");
+        return nullptr;
+    }
+ 
+    libvlc_media_player_set_pause(player, do_pause ? 1 : 0);
+ 
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
@@ -158,10 +191,36 @@ napi_value MediaPlayerPause(napi_env env, napi_callback_info info) {
     libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
 
     libvlc_media_player_pause(player);
-
+ 
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
+}
+
+napi_value MediaPlayerIsPlaying(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) return nullptr;
+
+    if (argc < 1 || args[0] == nullptr) {
+        napi_throw_type_error(env, nullptr, "Expected 1 argument (VlcMediaPlayer)");
+        return nullptr;
+    }
+
+    void* player_ptr = nullptr;
+    status = napi_unwrap(env, args[0], &player_ptr);
+    if (status != napi_ok || player_ptr == nullptr) {
+        napi_throw_type_error(env, nullptr, "Invalid VlcMediaPlayer argument");
+        return nullptr;
+    }
+    libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
+
+    bool is_playing = libvlc_media_player_is_playing(player);
+
+    napi_value result;
+    napi_get_boolean(env, is_playing, &result);
+    return result;
 }
 
 napi_value MediaPlayerStop(napi_env env, napi_callback_info info) {

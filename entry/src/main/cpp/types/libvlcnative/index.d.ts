@@ -13,7 +13,9 @@ export function mediaRelease(media: VlcMedia): void;
 export function mediaPlayerNew(instance: VlcInstance): VlcMediaPlayer;
 export function mediaPlayerSetMedia(player: VlcMediaPlayer, media: VlcMedia): void;
 export function mediaPlayerPlay(player: VlcMediaPlayer): void;
+export function mediaPlayerSetPause(player: VlcMediaPlayer, doPause: boolean): void;
 export function mediaPlayerPause(player: VlcMediaPlayer): void;
+export function mediaPlayerIsPlaying(player: VlcMediaPlayer): boolean;
 export function mediaPlayerStop(player: VlcMediaPlayer): void;
 
 export function mediaPlayerGetTime(player: VlcMediaPlayer): number;

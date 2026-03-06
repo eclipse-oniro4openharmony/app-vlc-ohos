@@ -13,7 +13,9 @@ static napi_value Init(napi_env env, napi_value exports) {
         {"mediaPlayerNew",        nullptr, MediaPlayerNew,        nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaPlayerSetMedia",   nullptr, MediaPlayerSetMedia,   nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaPlayerPlay",       nullptr, MediaPlayerPlay,       nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaPlayerSetPause",   nullptr, MediaPlayerSetPause,   nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaPlayerPause",      nullptr, MediaPlayerPause,      nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaPlayerIsPlaying",  nullptr, MediaPlayerIsPlaying,  nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaPlayerStop",       nullptr, MediaPlayerStop,       nullptr, nullptr, nullptr, napi_default, nullptr},
         
         {"mediaPlayerGetTime",    nullptr, MediaPlayerGetTime,    nullptr, nullptr, nullptr, napi_default, nullptr},

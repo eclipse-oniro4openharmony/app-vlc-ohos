@@ -955,17 +955,20 @@
 - [ ] Declare `ohos.permission.INTERNET` in `module.json5`.
 - **Test:** Enter an HLS URL — streaming playback works.
 
-### 7.5 Handle Application Lifecycle
-- [ ] In the page's `aboutToDisappear()`:
-  - Pause playback.
+### 7.5 Handle Application Lifecycle - [X]
+- [X] In the page's `aboutToDisappear()`:
   - Release resources via `VlcService.destroy()`.
-- [ ] In the Ability's `onBackground()`:
-  - Continue audio-only playback (if implementing background audio).
-  - OR pause all playback.
-- [ ] In the Ability's `onForeground()`:
-  - Re-acquire XComponent surface.
-  - Resume playback.
+- [X] In the Ability's `onBackground()`:
+  - Pause all playback.
+- [X] In the Ability's `onForeground()`:
+  - Re-acquire XComponent surface (handled automatically by `XComponent` lifecycle).
+  - Resume playback (if it was playing).
 - **Test:** Switch to another app and back — VLC recovers gracefully.
+
+> **Important Implementation Notes (Status):**
+> * **Ability Lifecycle:** Updated `EntryAbility.ets` to track playback state using `vlcService.isPlaying()` and automatically pause on background/resume on foreground.
+> * **NAPI Updates:** Added `mediaPlayerIsPlaying` to the NAPI layer to support cross-ability state tracking.
+> * **Robustness:** Leveraging `aboutToDisappear` and `onBackPress` in `PlayerPage.ets` ensures the VLC engine is stopped correctly when leaving the player.
 
 ---
 
