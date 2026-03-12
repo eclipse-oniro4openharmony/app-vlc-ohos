@@ -172,6 +172,11 @@ struct PlayerPage {
       this.playbackPosition = 0;
     });
 
+    vlcService.onEvent(VlcEvent.EndReached, () => {
+      console.info("VLC: EndReached event received, returning to starter page");
+      router.back();
+    });
+
     this.startHideTimer();
   }
 
