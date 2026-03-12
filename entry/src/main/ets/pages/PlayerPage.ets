@@ -1,7 +1,8 @@
 import { vlcService, VlcEvent, VlcEventData } from "../services/VlcService";
 import vlcnative from "libvlcnative.so";
-import { router } from "@kit.ArkUI";
+import { router, window } from "@kit.ArkUI";
 import { fileIo as fs } from "@kit.CoreFileKit";
+import { BusinessError } from "@kit.BasicServicesKit";
 
 class VlcXComponentController extends XComponentController {
   onSurfaceCreated(surfaceId: string): void {
@@ -31,9 +32,30 @@ struct PlayerPage {
   @State isControlsVisible: boolean = true;
   @State videoAspectRatio: number = 16 / 9;
   @State currentAspectRatioMode: number = 0;
+  @State videoTitle: string = "VLC Player";
+  @State isLandscape: boolean = false;
   private aspectModes: string[] = ["Best Fit", "16:9", "4:3", "Fill", "Original"];
 
   private hideTimer: number = -1;
+
+  toggleRotation() {
+    this.isLandscape = !this.isLandscape;
+    window.getLastWindow(getContext(this), (err: BusinessError, data) => {
+      const errCode: number = err.code;
+      if (errCode) {
+        console.error("Failed to get last window. Cause: " + JSON.stringify(err));
+        return;
+      }
+      let orientation = this.isLandscape
+        ? window.Orientation.LANDSCAPE
+        : window.Orientation.PORTRAIT;
+      data.setPreferredOrientation(orientation, (err) => {
+        if (err.code) {
+          console.error("Failed to set orientation. Cause: " + JSON.stringify(err));
+        }
+      });
+    });
+  }
 
   setNextAspectRatio() {
     this.currentAspectRatioMode = (this.currentAspectRatioMode + 1) % this.aspectModes.length;
@@ -80,6 +102,27 @@ struct PlayerPage {
     // Provide a test video to play as fallback
     const testPath = "/data/storage/el2/base/haps/entry/files/Big_Buck_Bunny.mp4";
     const pathToPlay = videoUri || testPath;
+
+    // Extract title from path
+    try {
+      const parts = pathToPlay.split("/");
+      let fileName = parts[parts.length - 1];
+      try {
+        fileName = decodeURIComponent(fileName);
+      } catch (e) {
+        // Fallback if decoding fails
+      }
+      
+      // Optional: remove extension
+      const lastDotIndex = fileName.lastIndexOf(".");
+      if (lastDotIndex > 0) {
+        this.videoTitle = fileName.substring(0, lastDotIndex);
+      } else {
+        this.videoTitle = fileName;
+      }
+    } catch (e) {
+      this.videoTitle = "VLC Player";
+    }
 
     if (pathToPlay.startsWith("file://") || pathToPlay.startsWith("datashare://")) {
       try {
@@ -138,6 +181,12 @@ struct PlayerPage {
       clearTimeout(this.hideTimer);
       this.hideTimer = -1;
     }
+    // Restore orientation if back is pressed
+    window.getLastWindow(getContext(this), (err, data) => {
+      if (!err.code) {
+        data.setPreferredOrientation(window.Orientation.AUTO_ROTATION_UNSPECIFIED);
+      }
+    });
   }
 
   aboutToDisappear(): void {
@@ -191,34 +240,44 @@ struct PlayerPage {
       // Controls Overlay
       if (this.isControlsVisible) {
         Column() {
-          // Top Bar (Optional: Title/Back)
+          // Top Bar Layout
           Row() {
-            Image($r("app.media.app_icon"))
-              // Placeholder for back icon
-              .width(24)
-              .height(24)
-              .margin({ left: 16 })
-              .onClick(() => {
-                // Navigate back logic if needed
-              })
-            Text("VLC Player")
+            // Optional: Back icon (could add later)
+            // Empty space so the text can be centered easily via flex properties or absolute pos if needed
+            Text(this.videoTitle)
               .fontSize(18)
               .fontColor(Color.White)
-              .margin({ left: 16 })
+              .fontWeight(FontWeight.Medium)
+              .textAlign(TextAlign.Center)
+              .layoutWeight(1)
           }
           .width("100%")
           .height(56)
-          .backgroundColor("#80000000")
-          Blank()
+          .margin({ top: 16 })
+          // No background as requested, floating at top
+
+          Blank() // Fills space between top title and bottom controls
 
           // Bottom Controls Block
           Column() {
-            // Seekbar
-            Row() {
-              Text(this.formatTime(this.currentTime))
-                .fontColor(Color.White)
-                .fontSize(12)
-                .margin({ right: 8 })
+            // Progress Bar and Time Layout
+            Column() {
+              // Time Indicators above slider
+              Row() {
+                Text(this.formatTime(this.currentTime))
+                  .fontColor(Color.White)
+                  .fontSize(14)
+                Blank()
+
+                // Represent remaining time e.g. -1:12
+                Text(`-${this.formatTime(this.totalTime - this.currentTime)}`)
+                  .fontColor(Color.White)
+                  .fontSize(14)
+              }
+              .width("100%")
+              .padding({ left: 16, right: 16, bottom: 4 })
+
+              // Slider spanning full width below time
               Slider({
                 value: this.playbackPosition,
                 min: 0,
@@ -227,10 +286,13 @@ struct PlayerPage {
                 style: SliderStyle.OutSet,
               })
                 .blockColor("#FF6600")
-                // VLC Orange
                 .trackColor("#40FFFFFF")
                 .selectedColor("#FF6600")
-                .layoutWeight(1)
+                .trackThickness(4)
+                .width("100%")
+                // Edge-to-edge
+                .padding({ left: 8, right: 8 })
+                // Optional padding
                 .onChange((value: number, mode: SliderChangeMode) => {
                   if (mode === SliderChangeMode.End || mode === SliderChangeMode.Moving) {
                     this.playbackPosition = value;
@@ -238,41 +300,49 @@ struct PlayerPage {
                     this.startHideTimer();
                   }
                 })
-              Text(this.formatTime(this.totalTime))
-                .fontColor(Color.White)
-                .fontSize(12)
-                .margin({ left: 8 })
             }
             .width("100%")
-            .padding({ left: 16, right: 16 })
+            .margin({ top: 8 })
 
-            // Playback Buttons
+            // Bottom Buttons Row
             Row() {
-              // Backward 10s
-              Button() {
-                Text("<<")
-                  .fontColor(Color.White)
-                  .fontSize(20)
-              }
-              .type(ButtonType.Circle)
-              .backgroundColor(Color.Transparent)
-              .onClick(() => {
-                vlcService.seekTo(Math.max(0, this.currentTime - 10000));
-                this.startHideTimer();
-              })
+              // Subtitles Icon
+              Image($r("app.media.ic_subtitles"))
+                .width(32)
+                .height(32)
+                .padding(4)
+                .fillColor(Color.White)
+                .onClick(() => {
+                  this.startHideTimer();
+                })
 
-              // Play/Pause
+              // Rotation Icon
+              Image($r("app.media.ic_player_rotate"))
+                .width(32)
+                .height(32)
+                .padding(4)
+                .fillColor(Color.White)
+                .margin({ left: 16 })
+                .onClick(() => {
+                  this.toggleRotation();
+                  this.startHideTimer();
+                })
+              Blank()
+
+              // Center Play/Pause
               Button() {
-                Text(this.isPlaying ? "||" : ">")
-                  .fontColor(Color.White)
-                  .fontSize(32)
-                  .fontWeight(FontWeight.Bold)
+                Image(
+                  this.isPlaying ? $r("app.media.ic_pause_player") : $r("app.media.ic_play_player"),
+                )
+                  .width(48)
+                  .height(48)
+                  .fillColor(Color.White)
               }
               .type(ButtonType.Circle)
               .width(64)
               .height(64)
               .margin({ left: 32, right: 32 })
-              .backgroundColor("#CCFF6600")
+              .backgroundColor(Color.Transparent)
               .onClick(() => {
                 if (this.isPlaying) {
                   vlcService.pause();
@@ -281,61 +351,43 @@ struct PlayerPage {
                 }
                 this.startHideTimer();
               })
-
-              // Forward 10s
-              Button() {
-                Text(">>")
-                  .fontColor(Color.White)
-                  .fontSize(20)
-              }
-              .type(ButtonType.Circle)
-              .backgroundColor(Color.Transparent)
-              .onClick(() => {
-                vlcService.seekTo(this.currentTime + 10000);
-                this.startHideTimer();
-              })
-            }
-            .width("100%")
-            .justifyContent(FlexAlign.Center)
-            .margin({ bottom: 16 })
-
-            // Secondary Controls (Volume/Aspect)
-            Row() {
-              // Volume Icon (Simple text for now)
-              Text("Vol")
-                .fontColor(Color.White)
-                .fontSize(14)
-                .margin({ right: 8 })
-              Slider({
-                value: this.volume,
-                min: 0,
-                max: 100,
-                style: SliderStyle.InSet,
-              })
-                .width(100)
-                .blockColor(Color.White)
-                .trackColor("#40FFFFFF")
-                .selectedColor(Color.White)
-                .onChange((value: number) => {
-                  this.volume = value;
-                  // TODO: Implement VolumeSet in NAPI if needed,
-                  // but VLC usually handles internal volume.
-                  this.startHideTimer();
-                })
               Blank()
-              Button(`Aspect: ${this.aspectModes[this.currentAspectRatioMode]}`)
-                .fontSize(12)
-                .backgroundColor("#40FFFFFF")
+
+              // Aspect Ratio Icon
+              Image($r("app.media.ic_player_ratio"))
+                .width(32)
+                .height(32)
+                .padding(4)
+                .fillColor(Color.White)
                 .onClick(() => {
                   this.setNextAspectRatio();
                   this.startHideTimer();
                 })
+
+              // More Options (Ellipsis)
+              Text("...")
+                .fontColor(Color.White)
+                .fontSize(24)
+                .padding(8)
+                .margin({ left: 16 })
+                .onClick(() => {
+                  this.startHideTimer();
+                })
             }
             .width("100%")
-            .padding({ left: 16, right: 16, bottom: 16 })
+            .padding({ left: 16, right: 16, top: 8, bottom: 24 })
+            .alignItems(VerticalAlign.Center)
           }
           .width("100%")
-          .backgroundColor("#80000000")
+          // Gradient Background at bottom for text visibility
+          .linearGradient({
+            direction: GradientDirection.Top,
+            colors: [
+              ["#99000000", 0.0],
+              ["#66000000", 0.5],
+              ["#00000000", 1.0],
+            ],
+          })
           .transition({ type: TransitionType.Insert, opacity: 1, translate: { y: 100 } })
           .transition({ type: TransitionType.Delete, opacity: 0, translate: { y: 100 } })
         }
