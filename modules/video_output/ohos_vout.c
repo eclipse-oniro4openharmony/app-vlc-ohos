@@ -234,6 +234,7 @@ static int InitEGL(vout_display_t *vd) {
         EGL_BLUE_SIZE, 8,
         EGL_GREEN_SIZE, 8,
         EGL_RED_SIZE, 8,
+        EGL_ALPHA_SIZE, 8,
         EGL_NONE
     };
 

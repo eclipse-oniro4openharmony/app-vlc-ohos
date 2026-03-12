@@ -612,6 +612,7 @@
 
 > **Important Implementation Notes (Status):**
 > * **Hardware Rendering Initialization:** Implementing direct EGL/GLES2 rendering path in `ohos_vout.c`. This will leverage GLES2 shaders to upload and display video frames, significantly reducing CPU overhead compared to the software `mmap` path.
+> * **HarmonyOS Compatibility:** Fixed an `EGL_BAD_MATCH` error on certain devices by explicitly adding `EGL_ALPHA_SIZE, 8` to the `eglChooseConfig` attributes, ensuring the EGL configuration matches the `NATIVEBUFFER_PIXEL_FMT_RGBA_8888` window format.
 > * **Refinement**: Using direct GLES2 function calls (linked via `libGLESv2.so`) instead of dynamic loading for better reliability.
 
 ### 4.5 Implement Scaling Mode Mapping - [X]
