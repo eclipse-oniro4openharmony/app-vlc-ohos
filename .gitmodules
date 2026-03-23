@@ -1,3 +1,4 @@
 [submodule "libvlc"]
 	path = libvlc
-	url = https://code.videolan.org/videolan/vlc.git
+	url = https://github.com/frankplus/vlc.git
+	branch = ohos
