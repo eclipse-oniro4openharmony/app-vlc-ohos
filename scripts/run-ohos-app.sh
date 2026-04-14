@@ -1,20 +1,6 @@
 #!/bin/bash
 
 BUNDLE_ID="org.oniroproject.vlc"
-GREP_FILTER=""
-
-while [[ "$#" -gt 0 ]]; do
-  case "$1" in
-    --grep)
-      GREP_FILTER="$2"
-      shift 2
-      ;;
-    *)
-      echo "Unknown argument: $1"
-      shift
-      ;;
-  esac
-done
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 cd "$SCRIPT_DIR/.." || exit 1
@@ -48,12 +34,3 @@ if [ -z "$pid" ]; then
 fi
 
 echo "App running PID: $pid"
-echo "Streaming logs..."
-
-# Execute Log Stream
-if [ -n "$GREP_FILTER" ]; then
-    # Note: Using -D to filter by domain or -T for tags is also helpful in hilog
-    hdc shell hilog -P "$pid" | grep -E "$GREP_FILTER"
-else
-    hdc shell hilog -P "$pid"
-fi
