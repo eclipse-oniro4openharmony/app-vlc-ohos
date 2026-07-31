@@ -163,11 +163,10 @@ napi_value MediaRelease(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
+    // On ArkTS napi_remove_wrap runs MediaFinalizer synchronously, which is what
+    // releases the media. Releasing again here would be a double free.
     void* native_ptr = nullptr;
-    status = napi_remove_wrap(env, args[0], &native_ptr);
-    if (status == napi_ok && native_ptr != nullptr) {
-        libvlc_media_release(static_cast<libvlc_media_t*>(native_ptr));
-    }
+    napi_remove_wrap(env, args[0], &native_ptr);
 
     napi_value undefined;
     napi_get_undefined(env, &undefined);

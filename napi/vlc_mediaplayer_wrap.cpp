@@ -23,19 +23,30 @@ static void MediaPlayerFinalizer(napi_env env, void* finalize_data, void* finali
     if (player != nullptr) {
         fprintf(stderr, "MediaPlayerFinalizer: releasing player %p\n", player);
         MediaPlayerDetachAllEvents(player);
+
+        OHNativeWindow* window = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(g_windowRegistryMutex);
+            auto it = g_windowRegistry.find(player);
+            if (it != g_windowRegistry.end()) {
+                window = it->second;
+                g_windowRegistry.erase(it);
+            }
+        }
+
+        if (window != nullptr) {
+            fprintf(stderr, "MediaPlayerFinalizer: detaching window %p\n", window);
+            // Notify libVLC that the window is going away before releasing it.
+            libvlc_media_player_set_nsobject(player, nullptr);
+        }
+
+        // Drops the reference owned by the JS wrapper only. MediaPlayerCleanup
+        // holds its own reference while it stops the player in the background,
+        // so this never frees a player that is still being torn down.
         libvlc_media_player_release(player);
 
-        std::lock_guard<std::mutex> lock(g_windowRegistryMutex);
-        auto it = g_windowRegistry.find(player);
-        if (it != g_windowRegistry.end()) {
-            fprintf(stderr, "MediaPlayerSetNativeWindow: detaching existing window %p\n", it->second);
-            // CRITICAL: Notify libVLC first that the window is going away
-            libvlc_media_player_set_nsobject(player, nullptr);
-            
-            if (it->second != nullptr) {
-                OH_NativeWindow_DestroyNativeWindow(it->second);
-            }
-            g_windowRegistry.erase(it);
+        if (window != nullptr) {
+            OH_NativeWindow_DestroyNativeWindow(window);
         }
     }
 }
@@ -458,10 +469,13 @@ napi_value MediaPlayerSetNativeWindow(napi_env env, napi_callback_info info) {
     std::string surfaceId(surfaceIdStr, result_len);
 
     std::lock_guard<std::mutex> lock(g_windowRegistryMutex);
-    
+
     // Release previous if exists
     auto it = g_windowRegistry.find(player);
     if (it != g_windowRegistry.end()) {
+        // Detach before dropping our reference: an already running vout keeps
+        // its own reference, but the player must stop handing out this window.
+        libvlc_media_player_set_nsobject(player, nullptr);
         if (it->second != nullptr) {
             OH_NativeWindow_DestroyNativeWindow(it->second);
         }
@@ -477,12 +491,10 @@ napi_value MediaPlayerSetNativeWindow(napi_env env, napi_callback_info info) {
             if (ret == 0 && nativeWindow != nullptr) {
                 fprintf(stderr, "MediaPlayerSetNativeWindow: Successfully created NativeWindow %p\n", nativeWindow);
                 g_windowRegistry[player] = nativeWindow;
-                
-                char ptrStr[32];
-                snprintf(ptrStr, sizeof(ptrStr), "%p", nativeWindow);
-                setenv("VLC_OHOS_WINDOW", ptrStr, 1);
 
-                // Also optionally set it on VLC via nsobject
+                // The window is attached per player. Never publish it through a
+                // process-global (env var, static): a later player would pick up
+                // the handle of an already dead surface and render nowhere.
                 libvlc_media_player_set_nsobject(player, nativeWindow);
             } else {
                 fprintf(stderr, "MediaPlayerSetNativeWindow: Failed to create NativeWindow, ret=%d\n", ret);
@@ -605,6 +617,10 @@ napi_value MediaPlayerCleanup(napi_env env, napi_callback_info info) {
     void* media_ptr = nullptr;
     void* instance_ptr = nullptr;
 
+    // Deliberately napi_unwrap and NOT napi_remove_wrap: on ArkTS the latter
+    // runs the finalizer synchronously, which would release these objects here
+    // and again below. The wrappers keep owning their reference; this function
+    // takes an extra one for the background thread instead.
     if (argc >= 1 && args[0] != nullptr) {
         napi_valuetype valuetype;
         napi_typeof(env, args[0], &valuetype);
@@ -612,7 +628,7 @@ napi_value MediaPlayerCleanup(napi_env env, napi_callback_info info) {
             napi_unwrap(env, args[0], &player_ptr);
         }
     }
-    
+
     if (argc >= 2 && args[1] != nullptr) {
         napi_valuetype valuetype;
         napi_typeof(env, args[1], &valuetype);
@@ -620,7 +636,7 @@ napi_value MediaPlayerCleanup(napi_env env, napi_callback_info info) {
             napi_unwrap(env, args[1], &media_ptr);
         }
     }
-    
+
     if (argc >= 3 && args[2] != nullptr) {
         napi_valuetype valuetype;
         napi_typeof(env, args[2], &valuetype);
@@ -666,6 +682,18 @@ napi_value MediaPlayerCleanup(napi_env env, napi_callback_info info) {
         }
     }
 
+    // Take our own references so the objects stay alive for the whole
+    // background teardown even if the GC finalizes the JS wrappers meanwhile.
+    if (player_ptr) {
+        libvlc_media_player_retain(static_cast<libvlc_media_player_t*>(player_ptr));
+    }
+    if (media_ptr) {
+        libvlc_media_retain(static_cast<libvlc_media_t*>(media_ptr));
+    }
+    if (instance_ptr) {
+        libvlc_retain(static_cast<libvlc_instance_t*>(instance_ptr));
+    }
+
     // Launch background thread for blocking operations
     std::thread([player_ptr, media_ptr, instance_ptr, nativeWindowToDestroy]() {
         fprintf(stderr, "MediaPlayerCleanup: background thread started for player=%p\n", player_ptr);
@@ -684,7 +712,7 @@ napi_value MediaPlayerCleanup(napi_env env, napi_callback_info info) {
                 OH_NativeWindow_DestroyNativeWindow(nativeWindowToDestroy);
             }
 
-            // 5. Finally release player
+            // 5. Drop the reference taken above (the JS wrapper still holds its own)
             libvlc_media_player_release(player);
             fprintf(stderr, "MediaPlayerCleanup: player %p released\n", player);
         }
@@ -703,9 +731,6 @@ napi_value MediaPlayerCleanup(napi_env env, napi_callback_info info) {
         
         fprintf(stderr, "MediaPlayerCleanup: background thread finished\n");
     }).detach();
-
-    // Removed napi_remove_wrap to allow the GC to naturally invoke
-    // MediaPlayerFinalizer when the JS object is genuinely unreferenced.
 
     napi_value undefined;
     napi_get_undefined(env, &undefined);

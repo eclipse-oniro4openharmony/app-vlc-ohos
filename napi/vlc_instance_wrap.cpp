@@ -48,9 +48,13 @@ napi_value VlcNew(napi_env env, napi_callback_info info) {
 
     setenv("VLC_PLUGIN_PATH", "/data/storage/el1/bundle/libs/arm64", 1);
     
-    // Redirect stderr to file for debugging
+    // Redirect stderr to file for debugging. freopen() makes the stream fully
+    // buffered (it now points at a regular file), which loses the tail of the
+    // log whenever the process dies; keep it unbuffered like the real stderr.
     freopen("/data/storage/el2/base/haps/entry/files/vlc_init.log", "w", stderr);
+    setvbuf(stderr, nullptr, _IONBF, 0);
     freopen("/data/storage/el2/base/haps/entry/files/vlc_init.log", "a", stdout);
+    setvbuf(stdout, nullptr, _IONBF, 0);
 
     libvlc_instance_t* instance = libvlc_new(c_args.size(), c_args.data());
     if (!instance) {
@@ -82,11 +86,10 @@ napi_value VlcRelease(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
+    // On ArkTS napi_remove_wrap runs VlcInstanceFinalizer synchronously, which is
+    // what releases the instance. Releasing again here would be a double free.
     void* native_ptr = nullptr;
-    status = napi_remove_wrap(env, args[0], &native_ptr);
-    if (status == napi_ok && native_ptr != nullptr) {
-        libvlc_release(static_cast<libvlc_instance_t*>(native_ptr));
-    }
+    napi_remove_wrap(env, args[0], &native_ptr);
 
     napi_value undefined;
     napi_get_undefined(env, &undefined);

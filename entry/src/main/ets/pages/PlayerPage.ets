@@ -5,8 +5,11 @@ import { fileIo as fs } from "@kit.CoreFileKit";
 import { BusinessError } from "@kit.BasicServicesKit";
 
 class VlcXComponentController extends XComponentController {
+  surfaceCreatedCallback: (surfaceId: string) => void = () => {};
+  surfaceDestroyedCallback: () => void = () => {};
+
   onSurfaceCreated(surfaceId: string): void {
-    vlcService.setNativeWindow(surfaceId);
+    this.surfaceCreatedCallback(surfaceId);
   }
 
   onSurfaceChanged(surfaceId: string, rect: SurfaceRect): void {
@@ -14,7 +17,7 @@ class VlcXComponentController extends XComponentController {
   }
 
   onSurfaceDestroyed(surfaceId: string): void {
-    vlcService.setNativeWindow("");
+    this.surfaceDestroyedCallback();
   }
 }
 
@@ -37,6 +40,7 @@ struct PlayerPage {
   private aspectModes: string[] = ["Best Fit", "16:9", "4:3", "Fill", "Original"];
 
   private hideTimer: number = -1;
+  private playbackStarted: boolean = false;
 
   toggleRotation() {
     this.isLandscape = !this.isLandscape;
@@ -95,6 +99,21 @@ struct PlayerPage {
   }
 
   aboutToAppear(): void {
+    // The native window must be attached to the player *before* playback
+    // starts. Starting first races the vout: if it opens before the surface is
+    // known it has nothing to render into, and only audio comes out.
+    this.xComponentController.surfaceCreatedCallback = (surfaceId: string) => {
+      vlcService.setNativeWindow(surfaceId);
+      if (!this.playbackStarted) {
+        this.playbackStarted = true;
+        vlcService.play();
+        this.isPlaying = true;
+      }
+    };
+    this.xComponentController.surfaceDestroyedCallback = () => {
+      vlcService.setNativeWindow("");
+    };
+
     // Retrieve URI from router params
     const params = router.getParams() as Record<string, string>;
     const videoUri = params?.videoUri;
@@ -138,8 +157,7 @@ struct PlayerPage {
       vlcService.loadMedia(pathToPlay);
     }
 
-    vlcService.play();
-    this.isPlaying = true;
+    // Playback is kicked off from surfaceCreatedCallback above.
 
     // Attach events
     vlcService.onEvent(VlcEvent.TimeChanged, (event: VlcEventData) => {

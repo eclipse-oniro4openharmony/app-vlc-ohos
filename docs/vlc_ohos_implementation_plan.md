@@ -177,6 +177,7 @@
 > **Important Implementation Notes (Status):**
 > * **CC/CXX Environment Variables:** The `-target` and `--sysroot` flags were added directly to the `CC` and `CXX` variables in `scripts/build_ohos.sh` to prevent libtool from dropping linker flags.
 > * **Missing POSIX functions in OpenHarmony musl libc:** Patched `libvlc/src/posix/filesystem.c` to bypass `posix_close`. Patched `libvlc/src/posix/thread.c` to stub out `pthread_cancel`, `pthread_setcancelstate`, and `pthread_testcancel` using `#ifndef __OHOS__` since thread cancellation is not supported on OpenHarmony.
+> * **Consequence of the `vlc_cancel()` stub — decoder threads never exited.** VLC 3.x's `DecoderThread()` has no exit condition at all: it loops forever and is only ever torn down by `pthread_cancel` firing at the `vlc_fifo_Wait()` cancellation point. With `vlc_cancel()` stubbed out, `input_DecoderDelete()` blocked in `vlc_join()` forever, so `libvlc_media_player_stop()` never returned and every playback leaked its player, input thread and vout — the orphaned vout kept spinning on a dead surface at ~90% CPU. Fixed in the fork by adding an explicit `b_exit` flag to `decoder_owner_sys_t`: `input_DecoderDelete()` sets it under the fifo lock and calls `vlc_fifo_Signal()`, and `DecoderThread()` leaves its loop when it sees it. Other `vlc_cancel()` users (demux/access helper threads) are not exercised by local-file playback but will need the same treatment — the long-term fix is an Android-style cancellation emulation (`src/android/thread.c`).
 > * **Dbus Linker Error:** Added `--disable-dbus` to `scripts/build_libvlc_ohos.sh` because DBus is not available on OpenHarmony.
 > * **libcompat Dependency:** Had to run `make -C libvlc/compat` prior to compiling `libvlc/src` due to missing `libcompat.la` linking dependency.
 
@@ -304,6 +305,7 @@
 - **Test:** Create player → set media → play — VLC engine starts (visible in debug logs even without video/audio output yet).
 > **Important Implementation Notes (Status):**
 > * **Wrapper Implementation:** Created `napi/vlc_mediaplayer_wrap.cpp`. Added `MediaPlayerNew`, `MediaPlayerSetMedia`, `MediaPlayerPlay`, `MediaPlayerPause` and `MediaPlayerStop` mapping to libVLC APIs. Memory lifecycle is managed via garbage collection explicitly with `MediaPlayerFinalizer`.
+> * **`napi_remove_wrap` runs the finalizer synchronously on ArkTS.** Unlike Node.js, ArkTS's implementation invokes the finalize callback from inside `napi_remove_wrap()`. Any `napi_remove_wrap(...)` followed by a manual `libvlc_*_release()` on the returned pointer is therefore a double free (it crashed the app on returning from the player page). Rules used here: functions that only *read* the native pointer use `napi_unwrap`; `vlcRelease`/`mediaRelease` rely on `napi_remove_wrap` alone to do the release; and `MediaPlayerCleanup`, which hands the objects to a background teardown thread, takes its own `libvlc_media_player_retain()` / `libvlc_media_retain()` / `libvlc_retain()` so the GC finalizing the JS wrapper mid-teardown cannot pull the object out from under it.
 
 ### 3.5 Implement Time/Position Query Functions
 - [x] Implement `MediaPlayerGetTime`, `MediaPlayerSetTime`.
@@ -628,11 +630,16 @@
 > * **Aspect Ratio Fill:** Fixed issue where the "Fill" mode didn't stretch vertically on portrait screens by setting the `XComponent`'s `height` to `"auto"` and removing its `aspectRatio` constraint whenever "Fill" mode is active.
 
 ### 4.6 Handle Surface Lifecycle Events & Restarts
-- [ ] The `onSurfaceDestroyed` call from ArkTS sets the surface mapping to `nullptr`. `ohos_vout.c` should routinely check window validity or be signaled to pause processing if the native window goes away.
+- [x] The `onSurfaceDestroyed` call from ArkTS sets the surface mapping to `nullptr`. `ohos_vout.c` should routinely check window validity or be signaled to pause processing if the native window goes away.
 - [ ] The `onSurfaceCreated` call when restoring the app provides a new `surfaceId`. 
-  - `MediaPlayerSetNativeWindow` should handle dynamically replacing the native window without stopping playback.
-  - `ohos_vout.c` must listen for the window replacement to generate a new EGL surface.
-- **Test:** Rotate device / minimize and restore app / switch between full-screen and mini-player — video output resumes robustly with the new surface boundaries.
+  - [x] `MediaPlayerSetNativeWindow` should handle dynamically replacing the native window without stopping playback.
+  - [ ] `ohos_vout.c` must listen for the window replacement to generate a new EGL surface. **Still open:** `sys->window` is captured in `Open()` and never revisited, so a window swapped in while a vout is already running is ignored. Only the enter/leave-the-player-page cycle (new player, new vout) is covered today.
+- **Test:** Rotate device / minimize and restore app / switch between full-screen and mini-player — video output resumes robustly with the new surface boundaries. *Verified so far: repeated play → back → play cycles render video every time. Minimize/restore and rotation during playback are untested.*
+> **Important Implementation Notes (Status):**
+> * **Per-player window, never a global.** The window handle used to be published through a `VLC_OHOS_WINDOW` environment variable that `ohos_vout.c` read as a fallback. On the second playback the vout picked up that stale handle — pointing at the surface of the *previous*, already destroyed XComponent — so every frame failed with `EGL_BAD_SURFACE` and only audio was heard. The env var is gone; the window travels per player through `libvlc_media_player_set_nsobject()`.
+> * **`libvlc_media_player_set_nsobject()` was a no-op off Apple.** Upstream guards it with `#ifdef __APPLE__` (the `#else` branch even forces `vout=none`), so `drawable-nsobject` was never actually set and the env-var hack was the only thing that ever worked. The fork now handles `__OHOS__` in `libvlc_media_player_new()` / `set_nsobject()` / `get_nsobject()`, and the vout reads it with `var_InheritAddress(vd, "drawable-nsobject")`.
+> * **Attach the surface before `play()`.** `PlayerPage` used to call `play()` in `aboutToAppear()`, i.e. before the XComponent existed. The vout then opened with no window and failed. Playback now starts from the `onSurfaceCreated` callback (guarded by `playbackStarted` so a later surface re-creation only re-attaches the window).
+> * **The vout owns a reference on the window** (`OH_NativeWindow_NativeObjectReference/Unreference` in `Open`/`Close`), so ArkTS dropping its handle mid-render can no longer free the window under the render thread.
 
 ---
 

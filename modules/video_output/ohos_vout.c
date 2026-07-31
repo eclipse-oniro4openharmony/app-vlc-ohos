@@ -299,12 +299,6 @@ static void Display(vout_display_t *vd, picture_t *picture, subpicture_t *subpic
         return;
     }
 
-    if (!sys->window || !sys->surface) {
-        picture_Release(picture);
-        if (subpicture) subpicture_Delete(subpicture);
-        return;
-    }
-
     EGLint surface_width = 0, surface_height = 0;
     eglQuerySurface(sys->display, sys->surface, EGL_WIDTH, &surface_width);
     eglQuerySurface(sys->display, sys->surface, EGL_HEIGHT, &surface_height);
@@ -438,19 +432,23 @@ static int Open(vlc_object_t *obj)
     if (embed && embed->handle.nsobject) {
         sys->window = (OHNativeWindow*)embed->handle.nsobject;
     } else {
+        /* Per-player window, set through libvlc_media_player_set_nsobject().
+         * Never fall back to a process-global handle: it would outlive the
+         * surface it came from and make the next playback render into a dead
+         * window. */
         sys->window = (OHNativeWindow*)var_InheritAddress(vd, "drawable-nsobject");
     }
 
     if (!sys->window) {
-        const char* ptrStr = getenv("VLC_OHOS_WINDOW");
-        if (ptrStr) sscanf(ptrStr, "%p", &sys->window);
-    }
-
-    if (!sys->window) {
+        msg_Warn(vd, "no native window attached to the player yet");
         if (embed) vout_display_DeleteWindow(vd, embed);
         free(sys);
         return VLC_EGENERIC;
     }
+
+    /* Keep the window alive for as long as this display uses it: the ArkTS
+     * side may drop its own handle while we are still rendering. */
+    OH_NativeWindow_NativeObjectReference(sys->window);
 
     sys->embed = embed;
     vd->fmt.i_chroma = VLC_CODEC_RGBA;
@@ -466,6 +464,7 @@ static int Open(vlc_object_t *obj)
 
     sys->pool = picture_pool_NewFromFormat(&vd->fmt, 10);
     if (!sys->pool) {
+        OH_NativeWindow_NativeObjectUnreference(sys->window);
         if (embed) vout_display_DeleteWindow(vd, embed);
         free(sys);
         return VLC_ENOMEM;
@@ -478,6 +477,8 @@ static int Open(vlc_object_t *obj)
 
     if (InitEGL(vd) != VLC_SUCCESS || InitGL(vd) != VLC_SUCCESS) {
         CleanupGL(vd);
+        picture_pool_Release(sys->pool);
+        OH_NativeWindow_NativeObjectUnreference(sys->window);
         if (embed) vout_display_DeleteWindow(vd, embed);
         free(sys);
         return VLC_EGENERIC;
@@ -496,6 +497,7 @@ static void Close(vlc_object_t *obj)
     vout_display_sys_t *sys = vd->sys;
     CleanupGL(vd);
     if (sys->pool) picture_pool_Release(sys->pool);
+    if (sys->window) OH_NativeWindow_NativeObjectUnreference(sys->window);
     if (sys->embed) vout_display_DeleteWindow(vd, sys->embed);
     free(sys);
 }
