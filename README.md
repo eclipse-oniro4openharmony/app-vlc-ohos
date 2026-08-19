@@ -94,6 +94,31 @@ The project is currently in a functional prototype phase.
 
 See the [Implementation Plan](docs/vlc_ohos_implementation_plan.md) for a detailed breakdown.
 
+## Possible Problem
+
+**SysCap Verification Failed**: Please try to match the API version of the device and the app. The current device does not contain the following SysCap attributes in the rpcid.json file: XXX. Make sure the device supports all the SysCap attributes required for running the app.  
+
+**Solution**  
+Method 1: Update the device system version.  
+Method 2: Create a syscap.json file in the src/main directory of the HAP module and remove the unsupported SysCap indicated in the error message.
+The following uses SystemCapability.Security.DeviceAuth as an example:
+
+```bash
+// entry/src/main/syscap.json
+{
+  "devices": {
+    "general": ["phone"]  // Same as deviceTypes in module.json5
+  },
+  "production": {
+    "removedSysCaps": [
+      "SystemCapability.Security.DeviceAuth"
+    ]
+  }
+}
+```
+
+Reference [link](https://developer.huawei.com/consumer/en/doc/harmonyos-guides/ide-debug-errorcode-00401#section1453383454618)
+
 ## License
 
 VLC for OpenHarmony is licensed under the same terms as the core VLC project: **GPL-2.0-or-later** for the application and **LGPL-2.1-or-later** for `libVLC` and its plugins.
