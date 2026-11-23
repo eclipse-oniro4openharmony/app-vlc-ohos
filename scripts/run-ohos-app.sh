@@ -5,11 +5,8 @@ BUNDLE_ID="org.oniroproject.vlc"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 cd "$SCRIPT_DIR/.." || exit 1
 
-# Prepare libs
-mkdir -p "$SCRIPT_DIR/../entry/libs/arm64-v8a"
-cp -rL "$SCRIPT_DIR/../vlc_install/lib/libvlc.so"* "$SCRIPT_DIR/../entry/libs/arm64-v8a/"
-cp -rL "$SCRIPT_DIR/../vlc_install/lib/libvlccore.so"* "$SCRIPT_DIR/../entry/libs/arm64-v8a/"
-cp -rL "$SCRIPT_DIR/../vlc_install/lib/vlc/plugins"/*/* "$SCRIPT_DIR/../entry/libs/arm64-v8a/" 2>/dev/null || true
+# Copy libVLC and its plugins from vlc_install/ into entry/libs/arm64-v8a
+bash "$SCRIPT_DIR/build_native.sh" stage || { echo "Staging the native libraries failed"; exit 1; }
 
 # Build
 hvigorw assembleHap --mode module -p product=default -p module=entry -p buildMode=debug --stacktrace --no-parallel --no-daemon || { echo "Build failed"; exit 1; }
