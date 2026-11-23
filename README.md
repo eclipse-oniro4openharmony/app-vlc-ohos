@@ -56,26 +56,22 @@ For more details, see:
     cd app-vlc-ohos
     ```
 
-2.  **Configure Environment**:
-    Edit `scripts/build_ohos.sh` and set `OHOS_SDK_ROOT` to your local SDK path.
-
-3.  **Build libVLC and Dependencies**:
-    The build is orchestrated via shell scripts to handle the complex VLC contrib system:
+2.  **Build libVLC and Dependencies**:
+    `scripts/build_native.sh` cross-compiles the third-party libraries (FFmpeg, libass, etc.) and libVLC with the SDK's NDK, then copies the libraries into `entry/libs/arm64-v8a`:
     ```bash
-    # Cross-compile third-party libraries (FFmpeg, libass, etc.)
-    bash scripts/build_ohos.sh
-    # Compile libVLC core and plugins
-    bash scripts/build_libvlc_ohos.sh
+    # --install-deps installs the host build tools with apt-get (Ubuntu 24.04)
+    bash scripts/build_native.sh --install-deps
     ```
+    The NDK is found at `~/setup-ohos-sdk/linux/<compileSdkVersion>/native`; set `OHOS_BASE_SDK_HOME` or `OHOS_NDK_HOME` if the SDK is elsewhere. The steps (`contribs`, `libvlc`, `stage`) can be run one at a time, and re-running one rebuilds only what changed. See `scripts/build_native.sh --help`.
 
-4.  **Build the HAP Application**:
+3.  **Build the HAP Application**:
     Open the project in DevEco Studio or use the command line:
     ```bash
     hvigorw assembleHap
     ```
 
-5.  **Run on Device**:
-    Use the provided utility script to bundle libraries and deploy:
+4.  **Run on Device**:
+    Use the provided utility script to stage the libraries, build and deploy:
     ```bash
     bash scripts/run-ohos-app.sh
     ```
@@ -110,6 +106,10 @@ Known issues:
 - Network streams (`http://`) do not open yet: libVLC's HTTP access reports "connection failure", even for addresses the device can reach.
 - Subtitle tracks can be selected, but the subtitles are not drawn on the video yet.
 - A resumed video starts at 0 and then jumps to the saved position.
+
+## Publishing to the Oniro App Store
+
+Pushing a version tag publishes the app: bump `versionCode` and `versionName` in `AppScope/app.json5`, commit, then `git tag v1.2.3 && git push origin v1.2.3`. The [store workflow](.github/workflows/oniro-store.yml) checks out the commit with the `libvlc` submodule, runs `scripts/build_native.sh` on a GitHub runner, builds and signs the HAP, attaches it to the tag's GitHub release and registers it with the store, which shows it as *Built from source*. libVLC and its contribs are built from scratch on every run, which takes most of the build time; pull requests that change the native code run the same build without publishing.
 
 ## Possible Problem
 

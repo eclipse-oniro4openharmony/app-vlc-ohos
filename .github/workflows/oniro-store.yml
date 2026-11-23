@@ -1,0 +1,31 @@
+# Pushing a version tag (v1.2.3) builds the app from that commit, attaches it
+# to the GitHub release of the tag, and publishes it to the Oniro App Store.
+# Bump versionCode in AppScope/app.json5 before tagging.
+#
+# libVLC and its contribs are built from source on every run
+# (scripts/build_native.sh), which takes most of the build job's time.
+# Pull requests that touch the native code run the same build without
+# publishing.
+name: Publish to the Oniro App Store
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - libvlc
+      - modules/**
+      - napi/**
+      - entry/src/main/cpp/**
+      - scripts/build_native.sh
+      - .github/workflows/oniro-store.yml
+permissions:
+  id-token: write   # proves to the store which repository and commit this is
+  contents: write   # creates the GitHub release that hosts the package
+jobs:
+  publish:
+    uses: eclipse-oniro4openharmony/oniro-app-store-actions/.github/workflows/publish.yml@native-prebuild
+    with:
+      app-name: VLC
+      submodules: true
+      prebuild: scripts/build_native.sh
+      build-timeout-minutes: 180
