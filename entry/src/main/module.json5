@@ -59,8 +59,8 @@
         }
       },
       {
-        "name": "ohos.permission.READ_MEDIA",
-        "reason": "$string:reason_read_media",
+        "name": "ohos.permission.FILE_ACCESS_PERSIST",
+        "reason": "$string:reason_file_access_persist",
         "usedScene": {
           "abilities": [
             "EntryAbility"

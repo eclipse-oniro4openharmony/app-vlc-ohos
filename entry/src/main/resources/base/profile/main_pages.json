@@ -1,6 +1,11 @@
 {
   "src": [
     "pages/Index",
-    "pages/PlayerPage"
+    "pages/PlayerPage",
+    "pages/StreamsPage",
+    "pages/HistoryPage",
+    "pages/InfoPage",
+    "pages/SettingsPage",
+    "pages/AboutPage"
   ]
 }

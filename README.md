@@ -89,10 +89,27 @@ The project is currently in a functional prototype phase.
 - [x] **Phase 4**: Software and GLES2 Video Output (`XComponent` + `OHNativeWindow`).
 - [x] **Phase 5**: Audio Output via `OHAudio`.
 - [x] **Phase 7**: Basic ArkTS UI with File Picker and lifecycle management.
+- [x] **Phase 8**: App screens modelled on VLC for Android 3.7 (see below).
 - [ ] **Phase 6**: Hardware-accelerated decoding via `OH_AVCodec` (Planned).
 - [ ] **Phase 10**: Subtitle rendering, PiP mode, and Media Session integration.
 
 See the [Implementation Plan](docs/vlc_ohos_implementation_plan.md) for a detailed breakdown.
+
+### App screens
+
+The UI follows VLC for Android 3.7:
+
+- **Video**: the user picks videos with the system file picker. Access to them is persisted (`ohos.permission.FILE_ACCESS_PERSIST`), so the list is still playable after a restart. Each row shows the duration, resolution and a thumbnail, and has Information and Remove actions.
+- **Player**: play/pause, seek bar with elapsed or remaining time, forward and back jumps, screen lock, resize modes, audio and subtitle track selection, playback speed, and resume from the last position.
+- **Information**: the media's duration, size and tracks, read by libVLC's parser (`mediaParse` in `napi/vlc_extra_wrap.cpp`) and by the platform's `AVMetadataExtractor`.
+- **More**: history of played media, streams (play a network address), Settings (resume playback, playback history, jump delay, theme) and About.
+
+The library, history and streams live in a relational store (`vlc.db`), and settings in Preferences. Unit tests for the stores and formatters are in `entry/src/ohosTest`.
+
+Known issues:
+- Network streams (`http://`) do not open yet: libVLC's HTTP access reports "connection failure", even for addresses the device can reach.
+- Subtitle tracks can be selected, but the subtitles are not drawn on the video yet.
+- A resumed video starts at 0 and then jumps to the saved position.
 
 ## Possible Problem
 

@@ -48,6 +48,7 @@ export class VlcService {
         "--vout=OHOSVout",
         "--aout=OHOSAout",
         "--no-xlib",
+        "--network-caching=1500",
       ];
       this.instance = vlcnative.vlcNew(args);
     }
@@ -204,6 +205,66 @@ export class VlcService {
       this.media = undefined;
       // this.instance persists
     }
+  }
+
+  /** Creates the instance and the player when they do not exist (after destroy()). */
+  prepare(): void {
+    this.ensureInitialized();
+  }
+
+  setRate(rate: number): boolean {
+    return this.player ? vlcnative.mediaPlayerSetRate(this.player, rate) : false;
+  }
+
+  getRate(): number {
+    return this.player ? vlcnative.mediaPlayerGetRate(this.player) : 1;
+  }
+
+  audioTracks(): vlcnative.VlcTrackDescription[] {
+    return this.player ? vlcnative.mediaPlayerGetAudioTracks(this.player) : [];
+  }
+
+  spuTracks(): vlcnative.VlcTrackDescription[] {
+    return this.player ? vlcnative.mediaPlayerGetSpuTracks(this.player) : [];
+  }
+
+  getAudioTrack(): number {
+    return this.player ? vlcnative.mediaPlayerGetAudioTrack(this.player) : -1;
+  }
+
+  setAudioTrack(id: number): boolean {
+    return this.player ? vlcnative.mediaPlayerSetAudioTrack(this.player, id) : false;
+  }
+
+  getSpu(): number {
+    return this.player ? vlcnative.mediaPlayerGetSpu(this.player) : -1;
+  }
+
+  setSpu(id: number): boolean {
+    return this.player ? vlcnative.mediaPlayerSetSpu(this.player, id) : false;
+  }
+
+  /** Parses a media on its own (never played): a location string or a file descriptor. */
+  async describe(uriOrFd: string | number): Promise<vlcnative.VlcMediaInfo> {
+    this.ensureInitialized();
+    if (!this.instance) {
+      throw new Error('no libVLC instance');
+    }
+    let m: vlcnative.VlcMedia;
+    if (typeof uriOrFd === 'number') {
+      m = vlcnative.mediaNewFd(this.instance, uriOrFd);
+    } else {
+      m = vlcnative.mediaNewLocation(this.instance, uriOrFd);
+    }
+    try {
+      return await vlcnative.mediaParse(m, 5000);
+    } finally {
+      vlcnative.mediaRelease(m);
+    }
+  }
+
+  libvlcVersion(): string {
+    return vlcnative.libvlcVersion();
   }
 
   getPlayer(): vlcnative.VlcMediaPlayer | undefined {

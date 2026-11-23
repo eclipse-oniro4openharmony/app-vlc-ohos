@@ -2,6 +2,7 @@
 #define VLC_NAPI_H
 
 #include <napi/native_api.h>
+#include <vlc/vlc.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,6 +17,8 @@ napi_value MediaNewPath(napi_env env, napi_callback_info info);
 napi_value MediaNewLocation(napi_env env, napi_callback_info info);
 napi_value MediaNewFd(napi_env env, napi_callback_info info);
 napi_value MediaRelease(napi_env env, napi_callback_info info);
+// The instance a media from mediaNewFd was made with (retained), or NULL.
+libvlc_instance_t* MediaFdInstance(libvlc_media_t* media);
 
 // Media Player
 napi_value MediaPlayerNew(napi_env env, napi_callback_info info);
@@ -35,6 +38,18 @@ napi_value MediaPlayerGetVideoSize(napi_env env, napi_callback_info info);
 napi_value MediaPlayerSetDisplaySize(napi_env env, napi_callback_info info);
 napi_value MediaPlayerSetAspectRatio(napi_env env, napi_callback_info info);
 napi_value MediaPlayerSetCrop(napi_env env, napi_callback_info info);
+
+// Rate, tracks, parse, version
+napi_value MediaPlayerSetRate(napi_env env, napi_callback_info info);
+napi_value MediaPlayerGetRate(napi_env env, napi_callback_info info);
+napi_value MediaPlayerGetAudioTracks(napi_env env, napi_callback_info info);
+napi_value MediaPlayerGetSpuTracks(napi_env env, napi_callback_info info);
+napi_value MediaPlayerGetAudioTrack(napi_env env, napi_callback_info info);
+napi_value MediaPlayerSetAudioTrack(napi_env env, napi_callback_info info);
+napi_value MediaPlayerGetSpu(napi_env env, napi_callback_info info);
+napi_value MediaPlayerSetSpu(napi_env env, napi_callback_info info);
+napi_value MediaParse(napi_env env, napi_callback_info info);
+napi_value LibvlcVersion(napi_env env, napi_callback_info info);
 
 // Video output binding
 napi_value MediaPlayerSetNativeWindow(napi_env env, napi_callback_info info);

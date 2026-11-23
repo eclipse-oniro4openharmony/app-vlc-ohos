@@ -10,6 +10,7 @@ add_library(vlcnative SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../../napi/vlc_media_wrap.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../../napi/vlc_mediaplayer_wrap.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../../napi/vlc_events.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../napi/vlc_extra_wrap.cpp
 )
 
 target_include_directories(vlcnative PRIVATE
@@ -28,6 +29,7 @@ target_link_libraries(vlcnative
     libace_napi.z.so
     libhilog_ndk.z.so
     libnative_window.so
+    libnative_drawing.so
 )
 
 add_library(ohos_vout_plugin SHARED

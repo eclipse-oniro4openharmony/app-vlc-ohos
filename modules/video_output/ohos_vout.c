@@ -40,8 +40,10 @@ typedef struct vout_display_sys_t {
     EGLSurface surface;
     GLuint program;
     GLuint texture;
+    GLuint sub_texture;
     GLuint vbo;
     GLint  u_texture;
+    GLint  u_alpha;
     unsigned width;
     unsigned height;
 
@@ -79,7 +81,14 @@ typedef struct vout_display_sys_t {
     PFNGLVERTEXATTRIBPOINTERPROC VertexAttribPointer;
     PFNGLDRAWARRAYSPROC DrawArrays;
     PFNGLGETERRORPROC GetError;
+    PFNGLENABLEPROC Enable;
+    PFNGLDISABLEPROC Disable;
+    PFNGLBLENDFUNCPROC BlendFunc;
+    PFNGLUNIFORM1FPROC Uniform1f;
 } vout_display_sys_t;
+
+/* Subtitles and OSD come to Display() as RGBA regions, drawn over the frame. */
+static const vlc_fourcc_t subpicture_chromas[] = { VLC_CODEC_RGBA, 0 };
 
 static const char *vertex_shader_source =
     "attribute vec4 a_position;\n"
@@ -94,8 +103,10 @@ static const char *fragment_shader_source =
     "precision mediump float;\n"
     "varying vec2 v_texCoord;\n"
     "uniform sampler2D u_texture;\n"
+    "uniform float u_alpha;\n"
     "void main() {\n"
-    "  gl_FragColor = texture2D(u_texture, v_texCoord);\n"
+    "  vec4 c = texture2D(u_texture, v_texCoord);\n"
+    "  gl_FragColor = vec4(c.rgb, c.a * u_alpha);\n"
     "}\n";
 
 static GLuint LoadShader(vout_display_t *vd, GLenum type, const char *shader_source) {
@@ -163,6 +174,10 @@ static int InitGL(vout_display_t *vd) {
     LOAD_GL(VertexAttribPointer);
     LOAD_GL(DrawArrays);
     LOAD_GL(GetError);
+    LOAD_GL(Enable);
+    LOAD_GL(Disable);
+    LOAD_GL(BlendFunc);
+    LOAD_GL(Uniform1f);
 #undef LOAD_GL
 
     GLuint vertex_shader = LoadShader(vd, GL_VERTEX_SHADER, vertex_shader_source);
@@ -188,13 +203,19 @@ static int InitGL(vout_display_t *vd) {
     }
 
     sys->u_texture = sys->GetUniformLocation(sys->program, "u_texture");
-    
-    sys->GenTextures(1, &sys->texture);
-    sys->BindTexture(GL_TEXTURE_2D, sys->texture);
-    sys->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    sys->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    sys->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    sys->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    sys->u_alpha = sys->GetUniformLocation(sys->program, "u_alpha");
+
+    GLuint textures[2];
+    sys->GenTextures(2, textures);
+    sys->texture = textures[0];
+    sys->sub_texture = textures[1];
+    for (int i = 0; i < 2; i++) {
+        sys->BindTexture(GL_TEXTURE_2D, textures[i]);
+        sys->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        sys->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        sys->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        sys->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
 
     float vertices[] = {
         -1.0f,  1.0f, 0.0f, 0.0f, 0.0f,
@@ -280,6 +301,7 @@ static void CleanupGL(vout_display_t *vd) {
     }
     if (sys->program && sys->DeleteProgram) sys->DeleteProgram(sys->program);
     if (sys->texture && sys->DeleteTextures) sys->DeleteTextures(1, &sys->texture);
+    if (sys->sub_texture && sys->DeleteTextures) sys->DeleteTextures(1, &sys->sub_texture);
     if (sys->vbo && sys->DeleteBuffers) sys->DeleteBuffers(1, &sys->vbo);
 }
 
@@ -287,6 +309,59 @@ static picture_pool_t *Pool(vout_display_t *vd, unsigned count)
 {
     VLC_UNUSED(count);
     return vd->sys->pool;
+}
+
+/* Draws each RGBA region of the subpicture as a blended quad over the frame.
+ * Region positions are in the subpicture's reference picture size, which the
+ * frame quad stretches over the whole surface. Called with the program, the
+ * vbo and the attribute pointers of the frame draw still bound. */
+static void DrawSubpicture(vout_display_t *vd, subpicture_t *subpicture)
+{
+    vout_display_sys_t *sys = vd->sys;
+    float ref_w = subpicture->i_original_picture_width > 0
+                ? (float)subpicture->i_original_picture_width : (float)vd->source.i_visible_width;
+    float ref_h = subpicture->i_original_picture_height > 0
+                ? (float)subpicture->i_original_picture_height : (float)vd->source.i_visible_height;
+    if (ref_w <= 0 || ref_h <= 0) return;
+
+    sys->Enable(GL_BLEND);
+    sys->BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    sys->ActiveTexture(GL_TEXTURE0);
+    sys->BindTexture(GL_TEXTURE_2D, sys->sub_texture);
+
+    for (subpicture_region_t *r = subpicture->p_region; r != NULL; r = r->p_next) {
+        picture_t *pic = r->p_picture;
+        if (pic == NULL || r->fmt.i_chroma != VLC_CODEC_RGBA) continue;
+        const plane_t *sp = &pic->p[0];
+        if (sp->i_pixel_pitch <= 0 || sp->i_lines <= 0) continue;
+        unsigned tex_w = sp->i_pitch / sp->i_pixel_pitch;
+        unsigned tex_h = sp->i_lines;
+        unsigned w = r->fmt.i_visible_width;
+        unsigned h = r->fmt.i_visible_height;
+        if (w == 0 || h == 0 || tex_w == 0) continue;
+
+        sys->TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_w, tex_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, sp->p_pixels);
+
+        float u0 = (float)r->fmt.i_x_offset / tex_w;
+        float v0 = (float)r->fmt.i_y_offset / tex_h;
+        float u1 = (float)(r->fmt.i_x_offset + w) / tex_w;
+        float v1 = (float)(r->fmt.i_y_offset + h) / tex_h;
+        float x0 = (float)r->i_x / ref_w * 2.0f - 1.0f;
+        float x1 = (float)(r->i_x + (int)w) / ref_w * 2.0f - 1.0f;
+        float y0 = 1.0f - (float)r->i_y / ref_h * 2.0f;
+        float y1 = 1.0f - (float)(r->i_y + (int)h) / ref_h * 2.0f;
+        float vertices[] = {
+            x0, y0, 0.0f, u0, v0,
+            x0, y1, 0.0f, u0, v1,
+            x1, y0, 0.0f, u1, v0,
+            x1, y1, 0.0f, u1, v1,
+        };
+        sys->BufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+        if (sys->u_alpha >= 0)
+            sys->Uniform1f(sys->u_alpha, (r->i_alpha / 255.0f) * (subpicture->i_alpha / 255.0f));
+        sys->DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    }
+    sys->Disable(GL_BLEND);
 }
 
 static void Display(vout_display_t *vd, picture_t *picture, subpicture_t *subpicture)
@@ -360,7 +435,10 @@ static void Display(vout_display_t *vd, picture_t *picture, subpicture_t *subpic
     sys->EnableVertexAttribArray(texAttrib);
     sys->VertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
+    if (sys->u_alpha >= 0) sys->Uniform1f(sys->u_alpha, 1.0f);
     sys->DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    if (subpicture) DrawSubpicture(vd, subpicture);
 
     if (!eglSwapBuffers(sys->display, sys->surface)) {
         msg_Err(vd, "eglSwapBuffers failed, eglError: 0x%x", eglGetError());
@@ -484,6 +562,7 @@ static int Open(vlc_object_t *obj)
         return VLC_EGENERIC;
     }
 
+    vd->info.subpicture_chromas = subpicture_chromas;
     vd->pool = Pool;
     vd->display = Display;
     vd->control = Control;

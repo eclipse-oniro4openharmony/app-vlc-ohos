@@ -3,6 +3,42 @@
     {
       "name": "start_window_background",
       "value": "#000000"
+    },
+    {
+      "name": "vlc_orange",
+      "value": "#FF8800"
+    },
+    {
+      "name": "title_bar_background",
+      "value": "#1E1E1E"
+    },
+    {
+      "name": "title_bar_text",
+      "value": "#FFFFFF"
+    },
+    {
+      "name": "page_background",
+      "value": "#000000"
+    },
+    {
+      "name": "text_primary",
+      "value": "#FFFFFF"
+    },
+    {
+      "name": "text_secondary",
+      "value": "#B0B0B0"
+    },
+    {
+      "name": "card_background",
+      "value": "#1E1E1E"
+    },
+    {
+      "name": "player_background",
+      "value": "#000000"
+    },
+    {
+      "name": "player_text",
+      "value": "#FFFFFF"
     }
   ]
 }

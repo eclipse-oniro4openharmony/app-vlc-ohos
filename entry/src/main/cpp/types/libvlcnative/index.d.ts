@@ -29,6 +29,36 @@ export function mediaPlayerSetNativeWindow(player: VlcMediaPlayer, surfaceId: st
 export function mediaPlayerSetAspectRatio(player: VlcMediaPlayer, aspect: string): void;
 export function mediaPlayerSetCrop(player: VlcMediaPlayer, crop: string): void;
 
+export interface VlcTrackDescription { id: number, name: string }
+export interface VlcMediaTrack {
+  type: 'audio' | 'video' | 'text',
+  codec: string,
+  description: string,
+  language: string,
+  width: number,
+  height: number,
+  frameRateNum: number,
+  frameRateDen: number,
+  channels: number,
+  rate: number
+}
+export interface VlcMediaInfo {
+  status: number, // libvlc_media_parsed_status_t: 1 skipped, 2 failed, 3 timeout, 4 done
+  durationMs: number,
+  title: string,
+  tracks: Array<VlcMediaTrack>
+}
+export function mediaPlayerSetRate(player: VlcMediaPlayer, rate: number): boolean;
+export function mediaPlayerGetRate(player: VlcMediaPlayer): number;
+export function mediaPlayerGetAudioTracks(player: VlcMediaPlayer): Array<VlcTrackDescription>;
+export function mediaPlayerGetSpuTracks(player: VlcMediaPlayer): Array<VlcTrackDescription>;
+export function mediaPlayerGetAudioTrack(player: VlcMediaPlayer): number;
+export function mediaPlayerSetAudioTrack(player: VlcMediaPlayer, id: number): boolean;
+export function mediaPlayerGetSpu(player: VlcMediaPlayer): number;
+export function mediaPlayerSetSpu(player: VlcMediaPlayer, id: number): boolean;
+export function mediaParse(media: VlcMedia, timeoutMs: number): Promise<VlcMediaInfo>;
+export function libvlcVersion(): string;
+
 export function mediaPlayerAttachEvent(player: VlcMediaPlayer, eventType: number, callback: (event: any) => void): void;
 export function mediaPlayerDetachEvent(player: VlcMediaPlayer, eventType: number): void;
 export const mediaPlayerCleanup: (player: any, media: any, instance: any) => void;

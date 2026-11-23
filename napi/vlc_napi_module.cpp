@@ -29,7 +29,18 @@ static napi_value Init(napi_env env, napi_value exports) {
         {"mediaPlayerSetAspectRatio", nullptr, MediaPlayerSetAspectRatio, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaPlayerSetCrop", nullptr, MediaPlayerSetCrop, nullptr, nullptr, nullptr, napi_default, nullptr},
         
-        {"mediaPlayerAttachEvent",    nullptr, MediaPlayerAttachEvent,    nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaPlayerSetRate",        nullptr, MediaPlayerSetRate,        nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaPlayerGetRate",        nullptr, MediaPlayerGetRate,        nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaPlayerGetAudioTracks", nullptr, MediaPlayerGetAudioTracks, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaPlayerGetSpuTracks",   nullptr, MediaPlayerGetSpuTracks,   nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaPlayerGetAudioTrack",  nullptr, MediaPlayerGetAudioTrack,  nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaPlayerSetAudioTrack",  nullptr, MediaPlayerSetAudioTrack,  nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaPlayerGetSpu",         nullptr, MediaPlayerGetSpu,         nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaPlayerSetSpu",         nullptr, MediaPlayerSetSpu,         nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaParse",                nullptr, MediaParse,                nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"libvlcVersion",             nullptr, LibvlcVersion,             nullptr, nullptr, nullptr, napi_default, nullptr},
+
+        {"mediaPlayerAttachEvent",   nullptr, MediaPlayerAttachEvent,    nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaPlayerDetachEvent",    nullptr, MediaPlayerDetachEvent,    nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaPlayerCleanup",        nullptr, MediaPlayerCleanup,        nullptr, nullptr, nullptr, napi_default, nullptr},
     };

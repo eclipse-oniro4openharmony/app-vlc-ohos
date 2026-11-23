@@ -2,7 +2,33 @@
   "float": [
     {
       "name": "page_text_font_size",
-      "value": "50fp"
-    }
+      "value": "16fp"
+    },
+    {
+      "name": "title_bar_height",
+      "value": "56vp"
+    },
+    {
+      "name": "title_button_size",
+      "value": "40vp"
+    },
+    {
+      "name": "title_icon_size",
+      "value": "24vp"
+    },
+    {
+      "name": "title_font_size",
+      "value": "20fp"
+    },
+    { "name": "player_button_size", "value": "44vp" },
+    { "name": "player_icon_size", "value": "26vp" },
+    { "name": "player_play_size", "value": "56vp" },
+    { "name": "player_play_icon", "value": "40vp" },
+    { "name": "player_margin", "value": "12vp" },
+    { "name": "player_text_size", "value": "14fp" },
+    { "name": "player_title_size", "value": "18fp" },
+    { "name": "player_small_size", "value": "12fp" },
+    { "name": "player_row_height", "value": "48vp" },
+    { "name": "player_preset_height", "value": "40vp" }
   ]
 }
