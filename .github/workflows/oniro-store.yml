@@ -3,7 +3,7 @@
 # Bump versionCode in AppScope/app.json5 before tagging.
 #
 # libVLC and its contribs are built from source on every run
-# (scripts/build_native.sh), which takes most of the build job's time.
+# (scripts/build_native.sh): about 15 of the build job's 20 minutes.
 # Pull requests that touch the native code run the same build without
 # publishing.
 name: Publish to the Oniro App Store
@@ -28,4 +28,3 @@ jobs:
       app-name: VLC
       submodules: true
       prebuild: scripts/build_native.sh
-      build-timeout-minutes: 180

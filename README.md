@@ -109,7 +109,7 @@ Known issues:
 
 ## Publishing to the Oniro App Store
 
-Pushing a version tag publishes the app: bump `versionCode` and `versionName` in `AppScope/app.json5`, commit, then `git tag v1.2.3 && git push origin v1.2.3`. The [store workflow](.github/workflows/oniro-store.yml) checks out the commit with the `libvlc` submodule, runs `scripts/build_native.sh` on a GitHub runner, builds and signs the HAP, attaches it to the tag's GitHub release and registers it with the store, which shows it as *Built from source*. libVLC and its contribs are built from scratch on every run, which takes most of the build time; pull requests that change the native code run the same build without publishing.
+Pushing a version tag publishes the app: bump `versionCode` and `versionName` in `AppScope/app.json5`, commit, then `git tag v1.2.3 && git push origin v1.2.3`. The [store workflow](.github/workflows/oniro-store.yml) checks out the commit with the `libvlc` submodule, runs `scripts/build_native.sh` on a GitHub runner, builds and signs the HAP, attaches it to the tag's GitHub release and registers it with the store, which shows it as *Built from source*. libVLC and its contribs are built from scratch on every run, about 15 of the build's 20 minutes; pull requests that change the native code run the same build without publishing.
 
 ## Possible Problem
 
