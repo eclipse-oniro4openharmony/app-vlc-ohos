@@ -173,6 +173,12 @@ export class VlcService {
     }
   }
 
+  setScale(scale: number): void {
+    if (this.player) {
+      vlcnative.mediaPlayerSetScale(this.player, scale);
+    }
+  }
+
   setCrop(crop: string): void {
     if (this.player) {
       vlcnative.mediaPlayerSetCrop(this.player, crop);

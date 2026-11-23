@@ -28,6 +28,7 @@ static napi_value Init(napi_env env, napi_value exports) {
         {"mediaPlayerSetNativeWindow", nullptr, MediaPlayerSetNativeWindow, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaPlayerSetAspectRatio", nullptr, MediaPlayerSetAspectRatio, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaPlayerSetCrop", nullptr, MediaPlayerSetCrop, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"mediaPlayerSetScale", nullptr, MediaPlayerSetScale, nullptr, nullptr, nullptr, napi_default, nullptr},
         
         {"mediaPlayerSetRate",        nullptr, MediaPlayerSetRate,        nullptr, nullptr, nullptr, napi_default, nullptr},
         {"mediaPlayerGetRate",        nullptr, MediaPlayerGetRate,        nullptr, nullptr, nullptr, napi_default, nullptr},

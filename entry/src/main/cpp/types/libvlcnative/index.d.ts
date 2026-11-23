@@ -28,6 +28,8 @@ export function mediaPlayerSetDisplaySize(player: VlcMediaPlayer, width: number,
 export function mediaPlayerSetNativeWindow(player: VlcMediaPlayer, surfaceId: string): void;
 export function mediaPlayerSetAspectRatio(player: VlcMediaPlayer, aspect: string): void;
 export function mediaPlayerSetCrop(player: VlcMediaPlayer, crop: string): void;
+/** 0 fits the picture in the surface; any other value zooms the video's own size. */
+export function mediaPlayerSetScale(player: VlcMediaPlayer, scale: number): void;
 
 export interface VlcTrackDescription { id: number, name: string }
 export interface VlcMediaTrack {

@@ -374,41 +374,69 @@ static void Display(vout_display_t *vd, picture_t *picture, subpicture_t *subpic
         return;
     }
 
-    EGLint surface_width = 0, surface_height = 0;
-    eglQuerySurface(sys->display, sys->surface, EGL_WIDTH, &surface_width);
-    eglQuerySurface(sys->display, sys->surface, EGL_HEIGHT, &surface_height);
-    
-    if (surface_width > 0 && surface_height > 0 && 
+    /* The size of the buffers being drawn, from the window itself: on some
+     * devices eglQuerySurface() reports EGL_WIDTH and EGL_HEIGHT swapped. */
+    int32_t surface_height = 0, surface_width = 0;
+    OH_NativeWindow_NativeWindowHandleOpt(sys->window, GET_BUFFER_GEOMETRY, &surface_height, &surface_width);
+    if (surface_width <= 0 || surface_height <= 0) {
+        EGLint w = 0, h = 0;
+        eglQuerySurface(sys->display, sys->surface, EGL_WIDTH, &w);
+        eglQuerySurface(sys->display, sys->surface, EGL_HEIGHT, &h);
+        surface_width = w;
+        surface_height = h;
+    }
+
+    /* The buffer follows the XComponent (sized from the ArkTS side): the core
+     * only learns the new size, the pictures keep the source size. */
+    if (surface_width > 0 && surface_height > 0 &&
         (surface_width != (int)sys->width || surface_height != (int)sys->height)) {
-        msg_Dbg(vd, "Surface resize detected: %dx%d (was %ux%u)", 
+        msg_Dbg(vd, "Surface resize detected: %dx%d (was %ux%u)",
                 surface_width, surface_height, sys->width, sys->height);
         sys->width = surface_width;
         sys->height = surface_height;
         vout_display_SendEventDisplaySize(vd, surface_width, surface_height);
-        // Do NOT send PicturesInvalid here, let the core handle the DisplaySize change
     }
 
     if (!eglMakeCurrent(sys->display, sys->surface, sys->surface, sys->context)) {
         msg_Err(vd, "eglMakeCurrent failing in Display, eglError: 0x%x", eglGetError());
     }
 
-    sys->Viewport(0, 0, surface_width, surface_height);
     sys->ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     sys->Clear(GL_COLOR_BUFFER_BIT);
+
+    /* Where the picture goes in the surface: fit, zoom, aspect ratio and crop
+     * all come from the core's configuration, laid out at the surface's
+     * current size (the core's own copy of it may lag one change behind). */
+    vout_display_cfg_t cfg = *vd->cfg;
+    cfg.display.width = surface_width;
+    cfg.display.height = surface_height;
+    vout_display_place_t place;
+    vout_display_PlacePicture(&place, &vd->source, &cfg, false);
+    if (place.width <= 0 || place.height <= 0) {
+        place.x = place.y = 0;
+        place.width = surface_width;
+        place.height = surface_height;
+    }
+    /* GL's origin is the bottom left corner. */
+    sys->Viewport(place.x, surface_height - place.y - place.height, place.width, place.height);
 
     sys->UseProgram(sys->program);
 
     sys->ActiveTexture(GL_TEXTURE0);
     sys->BindTexture(GL_TEXTURE_2D, sys->texture);
-    
+
     const plane_t *p = &picture->p[0];
-    
-    // Calculate visible texture coordinates using vd->fmt for visibility
-    float tex_w = (float)vd->fmt.i_visible_width / (p->i_pitch / p->i_pixel_pitch);
-    float tex_h = (float)vd->fmt.i_visible_height / p->i_lines;
+    const float buf_w = (float)(p->i_pitch / p->i_pixel_pitch);
+    const float buf_h = (float)p->i_lines;
+
+    /* The visible (possibly cropped) part of the picture, in the buffer. */
+    float u0 = (float)vd->source.i_x_offset / buf_w;
+    float v0 = (float)vd->source.i_y_offset / buf_h;
+    float u1 = (float)(vd->source.i_x_offset + vd->source.i_visible_width) / buf_w;
+    float v1 = (float)(vd->source.i_y_offset + vd->source.i_visible_height) / buf_h;
 
     sys->TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, p->i_pitch / p->i_pixel_pitch, p->i_lines, 0, GL_RGBA, GL_UNSIGNED_BYTE, p->p_pixels);
-    
+
     GLenum err = sys->GetError();
     if (err != GL_NO_ERROR) {
         msg_Err(vd, "glTexImage2D failed, glError: 0x%x", err);
@@ -416,12 +444,11 @@ static void Display(vout_display_t *vd, picture_t *picture, subpicture_t *subpic
 
     sys->Uniform1i(sys->u_texture, 0);
 
-    // Update vertices with correct texture coordinates
     float vertices[] = {
-        -1.0f,  1.0f, 0.0f, 0.0f,  0.0f,
-        -1.0f, -1.0f, 0.0f, 0.0f,  tex_h,
-         1.0f,  1.0f, 0.0f, tex_w, 0.0f,
-         1.0f, -1.0f, 0.0f, tex_w, tex_h,
+        -1.0f,  1.0f, 0.0f, u0, v0,
+        -1.0f, -1.0f, 0.0f, u0, v1,
+         1.0f,  1.0f, 0.0f, u1, v0,
+         1.0f, -1.0f, 0.0f, u1, v1,
     };
 
     sys->BindBuffer(GL_ARRAY_BUFFER, sys->vbo);
@@ -450,52 +477,23 @@ static void Display(vout_display_t *vd, picture_t *picture, subpicture_t *subpic
 
 static int Control(vout_display_t *vd, int query, va_list args) {
     switch (query) {
-        case VOUT_DISPLAY_CHANGE_DISPLAY_SIZE: {
-            const vout_display_cfg_t *cfg = va_arg(args, const vout_display_cfg_t *);
-            if (cfg->display.width > 0 && cfg->display.height > 0) {
-                if (cfg->display.width != vd->fmt.i_width || cfg->display.height != vd->fmt.i_height) {
-                    vout_display_SendEventPicturesInvalid(vd);
-                }
-            }
-            return VLC_SUCCESS;
-        }
-
-        case VOUT_DISPLAY_CHANGE_DISPLAY_FILLED: {
-            bool is_filled = va_arg(args, int);
-            msg_Dbg(vd, "Control: VOUT_DISPLAY_CHANGE_DISPLAY_FILLED %d", is_filled);
-            OH_NativeWindow_NativeWindowHandleOpt(vd->sys->window, 11 /* SET_SCALING_MODE */, 
-                is_filled ? OH_SCALING_MODE_SCALE_CROP_V2 : OH_SCALING_MODE_SCALE_FIT_V2);
-            return VLC_SUCCESS;
-        }
-
+        /* Display() places the picture from vd->cfg and vd->source on each
+         * frame: these only have to be accepted. The pictures keep the
+         * source size whatever the display, so none of them invalidate the
+         * pool. */
+        case VOUT_DISPLAY_CHANGE_DISPLAY_SIZE:
+        case VOUT_DISPLAY_CHANGE_DISPLAY_FILLED:
         case VOUT_DISPLAY_CHANGE_ZOOM:
         case VOUT_DISPLAY_CHANGE_SOURCE_ASPECT:
         case VOUT_DISPLAY_CHANGE_SOURCE_CROP:
             return VLC_SUCCESS;
 
-        case VOUT_DISPLAY_RESET_PICTURES: {
-            msg_Dbg(vd, "Control: VOUT_DISPLAY_RESET_PICTURES to %dx%d", 
-                    vd->cfg->display.width, vd->cfg->display.height);
-            
-            vd->fmt.i_width = vd->fmt.i_visible_width = vd->cfg->display.width;
-            vd->fmt.i_height = vd->fmt.i_visible_height = vd->cfg->display.height;
-            
-            if (vd->sys->window) {
-                OH_NativeWindow_NativeWindowHandleOpt(vd->sys->window, SET_BUFFER_GEOMETRY, vd->fmt.i_width, vd->fmt.i_height);
-            }
-
-            if (vd->sys->pool) {
-                picture_pool_Release(vd->sys->pool);
-            }
-            vd->sys->pool = picture_pool_NewFromFormat(&vd->fmt, 10);
-            if (!vd->sys->pool) {
-                msg_Err(vd, "Failed to recreate picture pool");
-                return VLC_ENOMEM;
-            }
-            
+        case VOUT_DISPLAY_RESET_PICTURES:
+            /* Never requested: the vout does not send PicturesInvalid. */
             return VLC_SUCCESS;
-        }
     }
+    VLC_UNUSED(vd);
+    VLC_UNUSED(args);
     return VLC_SUCCESS;
 }
 
@@ -535,10 +533,8 @@ static int Open(vlc_object_t *obj)
     vd->fmt.i_bmask = 0x00ff0000;
     video_format_FixRgb(&vd->fmt);
 
-    if (vd->cfg->display.width > 0 && vd->cfg->display.height > 0) {
-        vd->fmt.i_width = vd->fmt.i_visible_width = vd->cfg->display.width;
-        vd->fmt.i_height = vd->fmt.i_visible_height = vd->cfg->display.height;
-    }
+    /* The pictures keep the source size: the core only converts the chroma,
+     * the GPU scales them into the surface (see Display()). */
 
     sys->pool = picture_pool_NewFromFormat(&vd->fmt, 10);
     if (!sys->pool) {
@@ -551,7 +547,13 @@ static int Open(vlc_object_t *obj)
     // For EGL, we need GLES usage flags
     OH_NativeWindow_NativeWindowHandleOpt(sys->window, SET_USAGE, (1ULL << 8) /* native window usage for gles */ | (1ULL << 9) | (1ULL << 3));
     OH_NativeWindow_NativeWindowHandleOpt(sys->window, SET_FORMAT, 12);
-    OH_NativeWindow_NativeWindowHandleOpt(sys->window, SET_BUFFER_GEOMETRY, vd->fmt.i_width, vd->fmt.i_height);
+    /* The buffer size is the XComponent's, set from the ArkTS side when the
+     * surface changes. Before that, start with the video's own size. */
+    int32_t buf_h = 0, buf_w = 0;
+    OH_NativeWindow_NativeWindowHandleOpt(sys->window, GET_BUFFER_GEOMETRY, &buf_h, &buf_w);
+    if (buf_w <= 0 || buf_h <= 0)
+        OH_NativeWindow_NativeWindowHandleOpt(sys->window, SET_BUFFER_GEOMETRY,
+                                              (int)vd->fmt.i_visible_width, (int)vd->fmt.i_visible_height);
 
     if (InitEGL(vd) != VLC_SUCCESS || InitGL(vd) != VLC_SUCCESS) {
         CleanupGL(vd);

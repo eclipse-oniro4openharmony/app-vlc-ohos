@@ -6,8 +6,8 @@ import { Media } from '../model/Media';
 import { MediaStore } from '../model/MediaStore';
 import { SettingsStore } from '../model/SettingsStore';
 import { FormatStore } from '../model/FormatStore';
-import { TrackItem, VlcXComponentController, buildTrackItems, MODE_NAMES, surfaceAspectOf,
-  modeScaleOf, OneShotTimer, playerSheetOptions, tracksSheetHeight, subtitleSeekTarget } from '../components/player/PlayerTypes';
+import { TrackItem, VlcXComponentController, buildTrackItems, MODE_NAMES, ModeLayout,
+  modeLayoutOf, OneShotTimer, playerSheetOptions, tracksSheetHeight, subtitleSeekTarget } from '../components/player/PlayerTypes';
 import { PlayerSession } from '../components/player/PlayerSession';
 import { PlayerTopBar } from '../components/player/PlayerTopBar';
 import { PlayerHud } from '../components/player/PlayerHud';
@@ -26,6 +26,8 @@ struct PlayerPage {
   private controller: VlcXComponentController = new VlcXComponentController();
   private session: PlayerSession = new PlayerSession();
   private surfaceId: string = '';
+  private surfaceWidth: number = 0;
+  private surfaceHeight: number = 0;
   private mediaLoaded: boolean = false;
   private started: boolean = false;
   private left: boolean = false;
@@ -48,8 +50,8 @@ struct PlayerPage {
   @Local rate: number = 1;
   @Local resizeMode: number = 0;
   @Local infoText: string = '';
-  @Local videoWidth: number = 0;
-  @Local videoHeight: number = 0;
+  private videoWidth: number = 0;
+  private videoHeight: number = 0;
   @Local pageWidth: number = 0;
   @Local pageHeight: number = 0;
   @Local showTracks: boolean = false;
@@ -67,6 +69,12 @@ struct PlayerPage {
       this.surfaceId = surfaceId;
       vlcService.setNativeWindow(surfaceId);
       this.tryStart();
+    };
+    this.controller.surfaceSizeCallback = (width: number, height: number) => {
+      // Rotation or a new layout: Fit screen and Fill depend on the surface's shape.
+      this.surfaceWidth = width;
+      this.surfaceHeight = height;
+      this.applyResize();
     };
     this.controller.surfaceDestroyedCallback = () => {
       this.surfaceId = '';
@@ -162,6 +170,7 @@ struct PlayerPage {
     this.length = media.length;
     this.videoWidth = media.width;
     this.videoHeight = media.height;
+    this.applyResize();
     this.mediaLoaded = true;
     this.tryStart();
   }
@@ -195,6 +204,7 @@ struct PlayerPage {
     if (size.width > 0 && size.height > 0 && (this.videoWidth <= 0 || this.videoHeight <= 0)) {
       this.videoWidth = size.width;
       this.videoHeight = size.height;
+      this.applyResize();
     }
     if (this.rate !== 1) {
       vlcService.setRate(this.rate);
@@ -342,12 +352,17 @@ struct PlayerPage {
 
   private cycleResize(): void {
     this.resizeMode = (this.resizeMode + 1) % MODE_NAMES.length;
-    // The vout draws into the whole surface at the surface's own shape, so the modes
-    // reshape the XComponent (see surfaceAspect) and the engine keeps its default.
-    vlcService.setAspectRatio('');
-    vlcService.setCrop('');
+    this.applyResize();
     this.showInfo(MODE_NAMES[this.resizeMode]);
     this.armHide();
+  }
+
+  /** The surface covers the page: the engine places the picture in it for the resize mode. */
+  private applyResize(): void {
+    const layout: ModeLayout = modeLayoutOf(this.resizeMode, this.surfaceWidth, this.surfaceHeight,
+      this.videoWidth, this.videoHeight);
+    vlcService.setAspectRatio(layout.aspect);
+    vlcService.setScale(layout.scale);
   }
 
   private applyRate(value: number): void {
@@ -376,15 +391,6 @@ struct PlayerPage {
     if (id >= 0) {
       this.seekTo(subtitleSeekTarget(vlcService.getTime()));
     }
-  }
-
-  private surfaceAspect(): number {
-    return surfaceAspectOf(this.videoWidth, this.videoHeight);
-  }
-
-  private modeScale(): number[] {
-    return modeScaleOf(this.resizeMode, this.pageWidth, this.pageHeight, this.surfaceAspect(),
-      this.getUIContext().px2vp(this.videoWidth));
   }
 
   @Builder
@@ -476,9 +482,7 @@ struct PlayerPage {
         })
           .id('video_layout')
           .width('100%')
-          .height('auto')
-          .aspectRatio(this.surfaceAspect())
-          .scale({ x: this.modeScale()[0], y: this.modeScale()[1] })
+          .height('100%')
           .onClick(() => this.toggleOverlay())
 
         if (this.overlayVisible) {

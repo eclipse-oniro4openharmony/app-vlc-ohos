@@ -37,6 +37,7 @@ napi_value MediaPlayerSetPosition(napi_env env, napi_callback_info info);
 napi_value MediaPlayerGetVideoSize(napi_env env, napi_callback_info info);
 napi_value MediaPlayerSetDisplaySize(napi_env env, napi_callback_info info);
 napi_value MediaPlayerSetAspectRatio(napi_env env, napi_callback_info info);
+napi_value MediaPlayerSetScale(napi_env env, napi_callback_info info);
 napi_value MediaPlayerSetCrop(napi_env env, napi_callback_info info);
 
 // Rate, tracks, parse, version

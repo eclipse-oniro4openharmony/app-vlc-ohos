@@ -86,35 +86,33 @@ export function subtitleSeekTarget(nowMs: number): number {
 export const MODE_NAMES: string[] = ['surface_best_fit', 'surface_fit_screen', 'surface_fill', 'surface_16_9',
   'surface_4_3', 'surface_original'];
 
-/** The shape of the surface: the video's own, fixed once known (the vout does not follow later resizes). */
-export function surfaceAspectOf(videoWidth: number, videoHeight: number): number {
-  if (videoWidth <= 0 || videoHeight <= 0) {
-    return 16 / 9;
-  }
-  return videoWidth / videoHeight;
+/** How the engine lays the picture out in the surface: an aspect ratio ('' for the video's own) and a scale. */
+export class ModeLayout {
+  aspect: string = '';
+  /** 0 fits the picture in the surface; any other value zooms the video's own size. */
+  scale: number = 0;
 }
 
-/** The resize modes scale the drawn surface: [x, y] factors; videoWidthVp is the video's own width in vp. */
-export function modeScaleOf(mode: number, pageWidth: number, pageHeight: number, aspect: number,
-  videoWidthVp: number): number[] {
-  const surfaceHeight: number = pageWidth / aspect;
-  if (pageWidth <= 0 || surfaceHeight <= 0) {
-    return [1, 1];
+/**
+ * The resize modes as VLC for Android sets them, for a surface and a video in px: Best fit, Fit screen
+ * (fills the surface, cropping the overflow), Fill (stretched), 16:9, 4:3 and Center (the video's own size).
+ */
+export function modeLayoutOf(mode: number, surfaceWidth: number, surfaceHeight: number, videoWidth: number,
+  videoHeight: number): ModeLayout {
+  const layout: ModeLayout = new ModeLayout();
+  const surfaceKnown: boolean = surfaceWidth > 0 && surfaceHeight > 0;
+  if (mode === 1 && surfaceKnown && videoWidth > 0 && videoHeight > 0) {
+    layout.scale = Math.max(surfaceWidth / videoWidth, surfaceHeight / videoHeight);
+  } else if (mode === 2 && surfaceKnown) {
+    layout.aspect = `${Math.round(surfaceWidth)}:${Math.round(surfaceHeight)}`;
+  } else if (mode === 3) {
+    layout.aspect = '16:9';
+  } else if (mode === 4) {
+    layout.aspect = '4:3';
+  } else if (mode === 5) {
+    layout.scale = 1;
   }
-  if (mode === 2) {
-    return [1, pageHeight / surfaceHeight];
-  }
-  if (mode === 3) {
-    return [1, (pageWidth * 9 / 16) / surfaceHeight];
-  }
-  if (mode === 4) {
-    return [1, (pageWidth * 3 / 4) / surfaceHeight];
-  }
-  if (mode === 5 && videoWidthVp > 0) {
-    const k: number = videoWidthVp / pageWidth;
-    return [k, k];
-  }
-  return [1, 1];
+  return layout;
 }
 
 /** The rows of a track section; the subtitles start with Disable (id -1). */

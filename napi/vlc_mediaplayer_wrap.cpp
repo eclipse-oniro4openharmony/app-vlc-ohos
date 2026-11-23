@@ -8,6 +8,17 @@
 
 static std::mutex g_windowRegistryMutex;
 static std::unordered_map<libvlc_media_player_t*, OHNativeWindow*> g_windowRegistry;
+// The last surface size given for each player (px), under g_windowRegistryMutex:
+// applied to the window it has now and to the next one.
+static std::unordered_map<libvlc_media_player_t*, std::pair<int32_t, int32_t>> g_sizeRegistry;
+
+// The buffers of the window take the size of the XComponent's surface, so that
+// the vout draws at the screen's resolution and places the picture itself.
+static void ApplyWindowSize(OHNativeWindow* window, int32_t width, int32_t height) {
+    if (window != nullptr && width > 0 && height > 0) {
+        OH_NativeWindow_NativeWindowHandleOpt(window, SET_BUFFER_GEOMETRY, width, height);
+    }
+}
 
 extern "C" __attribute__((visibility("default"))) OHNativeWindow* GetOHNativeWindowForPlayer(libvlc_media_player_t* player) {
     std::lock_guard<std::mutex> lock(g_windowRegistryMutex);
@@ -32,6 +43,7 @@ static void MediaPlayerFinalizer(napi_env env, void* finalize_data, void* finali
                 window = it->second;
                 g_windowRegistry.erase(it);
             }
+            g_sizeRegistry.erase(player);
         }
 
         if (window != nullptr) {
@@ -491,6 +503,10 @@ napi_value MediaPlayerSetNativeWindow(napi_env env, napi_callback_info info) {
             if (ret == 0 && nativeWindow != nullptr) {
                 fprintf(stderr, "MediaPlayerSetNativeWindow: Successfully created NativeWindow %p\n", nativeWindow);
                 g_windowRegistry[player] = nativeWindow;
+                auto size = g_sizeRegistry.find(player);
+                if (size != g_sizeRegistry.end()) {
+                    ApplyWindowSize(nativeWindow, size->second.first, size->second.second);
+                }
 
                 // The window is attached per player. Never publish it through a
                 // process-global (env var, static): a later player would pick up
@@ -527,12 +543,31 @@ napi_value MediaPlayerSetDisplaySize(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    uint32_t width = 0, height = 0;
-    napi_get_value_uint32(env, args[1], &width);
-    napi_get_value_uint32(env, args[2], &height);
+    void* player_ptr = nullptr;
+    status = napi_unwrap(env, args[0], &player_ptr);
+    if (status != napi_ok || player_ptr == nullptr) {
+        napi_throw_type_error(env, nullptr, "Invalid VlcMediaPlayer argument");
+        return nullptr;
+    }
+    libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
 
-    // Vout now detects resize automatically via eglQuerySurface in Display()
-    
+    double width = 0, height = 0;
+    napi_get_value_double(env, args[1], &width);
+    napi_get_value_double(env, args[2], &height);
+    const int32_t w = static_cast<int32_t>(width + 0.5);
+    const int32_t h = static_cast<int32_t>(height + 0.5);
+
+    // The vout sees the new buffer size on its next frame (GET_BUFFER_GEOMETRY)
+    // and lays the picture out for it.
+    if (w > 0 && h > 0) {
+        std::lock_guard<std::mutex> lock(g_windowRegistryMutex);
+        g_sizeRegistry[player] = {w, h};
+        auto it = g_windowRegistry.find(player);
+        if (it != g_windowRegistry.end()) {
+            ApplyWindowSize(it->second, w, h);
+        }
+    }
+
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
@@ -567,6 +602,40 @@ napi_value MediaPlayerSetAspectRatio(napi_env env, napi_callback_info info) {
 
     libvlc_video_set_aspect_ratio(player, aspectStr);
     fprintf(stderr, "MediaPlayerSetAspectRatio: player=%p, aspect=%s\n", player, aspectStr);
+
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    return undefined;
+}
+
+napi_value MediaPlayerSetScale(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr, nullptr};
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) return nullptr;
+
+    if (argc < 2 || args[0] == nullptr || args[1] == nullptr) {
+        napi_throw_type_error(env, nullptr, "Expected 2 arguments (VlcMediaPlayer, scale)");
+        return nullptr;
+    }
+
+    void* player_ptr = nullptr;
+    status = napi_unwrap(env, args[0], &player_ptr);
+    if (status != napi_ok || player_ptr == nullptr) {
+        napi_throw_type_error(env, nullptr, "Invalid VlcMediaPlayer argument");
+        return nullptr;
+    }
+    libvlc_media_player_t* player = static_cast<libvlc_media_player_t*>(player_ptr);
+
+    double scale = 0;
+    status = napi_get_value_double(env, args[1], &scale);
+    if (status != napi_ok) {
+        napi_throw_type_error(env, nullptr, "Invalid scale argument (must be number)");
+        return nullptr;
+    }
+
+    // 0 fits the picture in the surface; any other value zooms the video's own size.
+    libvlc_video_set_scale(player, static_cast<float>(scale));
 
     napi_value undefined;
     napi_get_undefined(env, &undefined);
