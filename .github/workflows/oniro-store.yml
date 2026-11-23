@@ -23,7 +23,7 @@ permissions:
   contents: write   # creates the GitHub release that hosts the package
 jobs:
   publish:
-    uses: eclipse-oniro4openharmony/oniro-app-store-actions/.github/workflows/publish.yml@native-prebuild
+    uses: eclipse-oniro4openharmony/oniro-app-store-actions/.github/workflows/publish.yml@v1
     with:
       app-name: VLC
       submodules: true
